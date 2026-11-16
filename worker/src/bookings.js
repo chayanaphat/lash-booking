@@ -14,10 +14,11 @@ export async function buildQuote(env, { date, style_ids, use_reward = false }, s
   if (!isDate(date)) throw new HttpError(400, 'invalid_date');
   const ids = (style_ids || []).map(Number).filter(Boolean);
   if (!ids.length) throw new HttpError(400, 'no_styles');
-  if (ids.length > settings.max_people) throw new HttpError(400, 'too_many_people');
+  if (ids.length > settings.max_people * 3) throw new HttpError(400, 'too_many_items');
   const [styles, promos] = await Promise.all([getStyles(env, { activeOnly: true }), getPromotions(env)]);
   const map = styleMap(styles);
   for (const id of ids) if (!map[id]) throw new HttpError(400, 'style_not_found');
+  if (ids.filter((id) => map[id].kind !== 'addon').length > settings.max_people) throw new HttpError(400, 'too_many_people');
   const q = quote(map, ids, promos, date, { useReward: use_reward });
   q.deposit_amount = Math.min(settings.deposit_amount, q.total);
   return q;

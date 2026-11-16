@@ -187,6 +187,8 @@ function styleInput(b) {
     image_id: b.image_id ? str(b.image_id, 64) : null,
     sort: int(b.sort, 0),
     active: b.active === false || b.active === 0 ? 0 : 1,
+    category: str(b.category, 60) || 'บริการ',
+    kind: b.kind === 'addon' ? 'addon' : 'main',
   };
   if (!s.name || s.price < 0 || s.duration_min < 15) throw new HttpError(400, 'invalid_style');
   return s;
@@ -194,14 +196,14 @@ function styleInput(b) {
 on('GET', '/api/admin/styles', 'admin', async ({ env }) => json({ styles: await getStyles(env) }));
 on('POST', '/api/admin/styles', 'admin', async ({ env, req }) => {
   const s = styleInput(await readJson(req));
-  const r = await env.DB.prepare('INSERT INTO styles (name, description, price, duration_min, image_id, sort, active) VALUES (?,?,?,?,?,?,?)')
-    .bind(s.name, s.description, s.price, s.duration_min, s.image_id, s.sort, s.active).run();
+  const r = await env.DB.prepare('INSERT INTO styles (name, description, price, duration_min, image_id, sort, active, category, kind) VALUES (?,?,?,?,?,?,?,?,?)')
+    .bind(s.name, s.description, s.price, s.duration_min, s.image_id, s.sort, s.active, s.category, s.kind).run();
   return json({ id: r.meta.last_row_id }, 201);
 });
 on('PUT', '/api/admin/styles/:id', 'admin', async ({ env, req, params }) => {
   const s = styleInput(await readJson(req));
-  await env.DB.prepare('UPDATE styles SET name=?, description=?, price=?, duration_min=?, image_id=?, sort=?, active=? WHERE id=?')
-    .bind(s.name, s.description, s.price, s.duration_min, s.image_id, s.sort, s.active, int(params.id)).run();
+  await env.DB.prepare('UPDATE styles SET name=?, description=?, price=?, duration_min=?, image_id=?, sort=?, active=?, category=?, kind=? WHERE id=?')
+    .bind(s.name, s.description, s.price, s.duration_min, s.image_id, s.sort, s.active, s.category, s.kind, int(params.id)).run();
   return json({ ok: true });
 });
 on('DELETE', '/api/admin/styles/:id', 'admin', async ({ env, params }) => {

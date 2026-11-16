@@ -70,3 +70,14 @@ test('slots: วันนี้ต้องจองล่วงหน้า 2 �
   const r = computeSlots({ date: '2026-11-17', duration: 120, hours, holidays: new Set(), busy: [], settings, now: { date: '2026-11-17', time: '11:10' } });
   assert.equal(r.slots[0].time, '14:00');
 });
+
+test('บริการเสริมไม่นับเป็นคน และไม่โดนโปร "ทุกทรง"', () => {
+  const st = { ...styles, 9: { id: 9, name: 'ล่าง', price: 150, duration_min: 30, kind: 'addon' } };
+  const q = quote(st, [1, 9], [come2], '2027-01-15');
+  assert.equal(q.total, 600); // มาคนเดียว ไม่ได้โปร มา 2
+  const q2 = quote(st, [1, 2, 9], [come2], '2027-01-15');
+  assert.deepEqual(q2.items.map((i) => i.price), [400, 500, 150]);
+  assert.equal(q2.duration_min, 270);
+  const q3 = quote(st, [1, 9], [], '2026-12-01', { useReward: true });
+  assert.deepEqual(q3.items.map((i) => i.price), [0, 150]);
+});

@@ -1,8 +1,14 @@
 // LINE message builders (Flex / text)
 import { baht, bkkNow, thaiDate } from './util.js';
 
-const ROSE = '#B05A6F';
-const MUTED = '#8C7B7F';
+const ROSE = '#8E5BA8';
+const MUTED = '#8A7A90';
+
+/** 'คนที่ 1', 'คนที่ 2', '+ เสริม' */
+export function itemLabels(items) {
+  let n = 0;
+  return items.map((it) => (it.kind === 'addon' ? '+ เสริม' : `คนที่ ${++n}`));
+}
 
 export const liffUrl = (env, params = {}) => {
   const q = new URLSearchParams(params).toString();
@@ -24,9 +30,9 @@ function bookingRows(b) {
     row('รหัสจอง', b.code, true),
     row('วันที่', thaiDate(b.date)),
     row('เวลา', `${b.start_time} – ${b.end_time} น.`),
-    ...b.items.map((it, i) =>
-      row(`คนที่ ${i + 1}`, `${it.name}  ${it.reward ? 'ฟรี (สะสมแต้ม)' : baht(it.price)}`),
-    ),
+    ...((labels) => b.items.map((it, i) =>
+      row(labels[i], `${it.name}  ${it.reward ? 'ฟรี (สะสมแต้ม)' : baht(it.price)}`),
+    ))(itemLabels(b.items)),
     { type: 'separator', margin: 'md' },
     row('ยอดรวม', baht(b.total), true),
   ];
@@ -36,7 +42,8 @@ export function depositFlex(env, b, settings) {
   const expire = b.expires_at ? bkkNow(Date.parse(b.expires_at)).time : null;
   const pay = [
     row('มัดจำ', baht(b.deposit_amount), true),
-    settings.promptpay_id ? row('พร้อมเพย์', settings.promptpay_id) : null,
+    settings.bank_name ? row('ธนาคาร', settings.bank_name) : null,
+    settings.bank_account_no ? row('เลขบัญชี', settings.bank_account_no) : null,
     settings.promptpay_name ? row('ชื่อบัญชี', settings.promptpay_name) : null,
   ].filter(Boolean);
   return {
@@ -48,7 +55,7 @@ export function depositFlex(env, b, settings) {
         type: 'box', layout: 'vertical', backgroundColor: ROSE, paddingAll: '16px',
         contents: [
           { type: 'text', text: 'รับคำขอจองแล้ว 💕', color: '#FFFFFF', weight: 'bold', size: 'lg' },
-          { type: 'text', text: 'กรุณาโอนมัดจำเพื่อยืนยันคิว', color: '#FFE9EE', size: 'sm' },
+          { type: 'text', text: 'กรุณาโอนมัดจำเพื่อยืนยันคิว (ที่เหลือชำระวันทำ)', color: '#F3E6FA', size: 'sm', wrap: true },
         ],
       },
       body: {
@@ -68,7 +75,7 @@ export function depositFlex(env, b, settings) {
         contents: [
           {
             type: 'button', style: 'primary', color: ROSE,
-            action: { type: 'uri', label: 'สแกน QR / อัปโหลดสลิป', uri: liffUrl(env, { p: 'pay', code: b.code }) },
+            action: { type: 'uri', label: 'ชำระมัดจำ / ส่งสลิป', uri: liffUrl(env, { p: 'pay', code: b.code }) },
           },
         ],
       },

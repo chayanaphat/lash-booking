@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS styles (
   image_id     TEXT,
   sort         INTEGER NOT NULL DEFAULT 0,
   active       INTEGER NOT NULL DEFAULT 1,
+  category     TEXT NOT NULL DEFAULT 'ต่อขนตา (เลือกทรง)',   -- หัวข้อที่แสดงในหน้าจอง
+  kind         TEXT NOT NULL DEFAULT 'main',               -- main = บริการหลัก (นับเป็น 1 คน) | addon = บริการเสริม
   created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -127,3 +129,7 @@ WHERE NOT EXISTS (SELECT 1 FROM promotions);
 INSERT INTO promotions (name, type, min_people, fixed_prices, active)
 SELECT 'ทรง A ราคาพิเศษ 450', 'fixed_price', 1, '{"1":450}', 0
 WHERE (SELECT COUNT(*) FROM promotions) = 1;
+
+-- ---------- migration (ฐานข้อมูลที่สร้างก่อนมีบริการเสริม) ----------
+-- ALTER TABLE styles ADD COLUMN category TEXT NOT NULL DEFAULT 'ต่อขนตา (เลือกทรง)';
+-- ALTER TABLE styles ADD COLUMN kind TEXT NOT NULL DEFAULT 'main';

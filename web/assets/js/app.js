@@ -1,8 +1,8 @@
 import {
   STATUS, addDays, api, baht, bkkTime, dayName, errText, esc, imgUrl, initLiff, loadImage, monthShort,
   profile, promoRange, promoText, readSlipQR, thaiDate, toast, weekday,
-} from './core.js?v=1794861157';
-import { promptPayPayload } from './promptpay.js?v=1794861157';
+} from './core.js?v=1794863268';
+import { promptPayPayload } from './promptpay.js?v=1794863268';
 
 const $app = document.getElementById('app');
 const $bar = document.getElementById('bar');
@@ -54,6 +54,17 @@ function render() {
 }
 const go = (h) => (location.hash = h);
 const styleById = (id) => state.info.styles.find((s) => s.id === Number(id));
+const isAddon = (id) => styleById(id)?.kind === 'addon';
+const peopleCount = () => state.cart.filter((id) => !isAddon(id)).length;
+/** 'คนที่ 1', 'คนที่ 2', '+ เสริม' */
+const itemLabels = (items) => {
+  let n = 0;
+  return items.map((it) => (it.kind === 'addon' ? '+ เสริม' : `คนที่ ${++n}`));
+};
+const policyList = (text) => {
+  const lines = String(text || '').split(/\n+/).map((x) => x.trim()).filter(Boolean);
+  return lines.length ? `<ul class="policy">${lines.map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : '';
+};
 
 // ------------------------------------------------------------------ home
 function viewHome() {
@@ -64,10 +75,11 @@ function viewHome() {
 
   $app.innerHTML = `
     <section class="hero">
-      <div class="row between">
-        <div>
-          <div class="small muted">สวัสดีค่ะ คุณ${esc(u.display_name || profile?.displayName || '')}</div>
+      <div class="row">
+        <img class="logo" src="assets/logo.jpg" alt="${esc(settings.shop_name)}">
+        <div class="grow">
           <h1 class="brand">${esc(settings.shop_name)}</h1>
+          <div class="small muted">สวัสดีค่ะ คุณ${esc(u.display_name || profile?.displayName || '')}</div>
         </div>
         ${profile?.pictureUrl ? `<img class="avatar" src="${esc(profile.pictureUrl)}" alt="">` : ''}
       </div>
@@ -84,38 +96,52 @@ function viewHome() {
 
     ${u.stamps >= req ? `<div class="card mt" style="background:#fff8ec">🎁 <b>คุณมีสิทธิ์ต่อขนตาฟรี 1 ทรง!</b><div class="small muted">เลือกใช้สิทธิ์ได้ในขั้นตอนเลือกวันเวลา</div></div>` : ''}
 
-    <div class="section-title">เลือกทรงขนตา</div>
-    <p class="small muted" style="margin-top:-6px">ทรงละประมาณ 2 ชั่วโมง · มากับเพื่อน? กดเลือกทรงให้เพื่อนเพิ่มได้ (สูงสุด ${settings.max_people} คน)</p>
-    <div class="styles">
-      ${styles.map((s) => {
-        const n = state.cart.filter((x) => x === s.id).length;
-        return `
-        <div class="style rel ${n ? 'sel' : ''}">
-          ${s.image_id ? `<img class="ph" src="${imgUrl(s.image_id)}" alt="${esc(s.name)}" loading="lazy">` : `<div class="ph">👁️</div>`}
-          ${n ? `<span class="badge-n">${n}</span>` : ''}
-          <div class="b">
-            <div class="n">${esc(s.name)}</div>
-            ${s.description ? `<div class="tiny muted">${esc(s.description)}</div>` : ''}
-            <div class="p">${baht(s.price)}</div>
-            <button class="btn sm ghost add" data-add="${s.id}">+ เลือกทรงนี้</button>
-          </div>
-        </div>`;
-      }).join('')}
-    </div>
+    <div class="section-title">เลือกบริการ</div>
+    <p class="small muted" style="margin-top:-6px">ต่อขนตาใช้เวลาประมาณ 2 ชั่วโมง · มากับเพื่อน? เลือกให้เพื่อนเพิ่มได้ (สูงสุด ${settings.max_people} คน)</p>
+    ${groupByCategory(styles).map(([cat, list]) => `
+      <div class="cat-title">${esc(cat)}</div>
+      <div class="styles">${list.map(styleCard).join('')}</div>`).join('')}
     ${styles.length ? '' : '<div class="empty">ยังไม่มีทรงให้เลือก</div>'}
     ${settings.shop_address || settings.shop_phone ? `<p class="center small muted mt2">${esc(settings.shop_address)}<br>${esc(settings.shop_phone)}</p>` : ''}
   `;
   bindGo();
   $app.querySelectorAll('[data-add]').forEach((b) =>
     b.addEventListener('click', () => {
-      if (state.cart.length >= settings.max_people) return toast(`เลือกได้สูงสุด ${settings.max_people} คน`);
-      state.cart.push(Number(b.dataset.add));
+      const id = Number(b.dataset.add);
+      if (!isAddon(id) && peopleCount() >= settings.max_people) return toast(`เลือกได้สูงสุด ${settings.max_people} คน`);
+      state.cart.push(id);
       state.time = null;
       viewHome();
-      toast(`เพิ่มคนที่ ${state.cart.length} แล้ว`);
+      toast(isAddon(id) ? 'เพิ่มบริการเสริมแล้ว' : `เพิ่มคนที่ ${peopleCount()} แล้ว`);
     }),
   );
   renderCartBar();
+}
+
+function groupByCategory(list) {
+  const map = new Map();
+  for (const st of list) {
+    const k = st.category || 'บริการ';
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(st);
+  }
+  return [...map.entries()];
+}
+
+function styleCard(s) {
+  const n = state.cart.filter((x) => x === s.id).length;
+  const addon = s.kind === 'addon';
+  return `
+    <div class="style rel ${n ? 'sel' : ''} ${addon ? 'addon' : ''}">
+      ${s.image_id ? `<img class="ph" src="${imgUrl(s.image_id)}" alt="${esc(s.name)}" loading="lazy">` : `<div class="ph">${addon ? '✨' : '👁️'}</div>`}
+      ${n ? `<span class="badge-n">${n}</span>` : ''}
+      <div class="b">
+        <div class="n">${esc(s.name)}</div>
+        ${s.description ? `<div class="tiny muted">${esc(s.description)}</div>` : ''}
+        <div class="p">${baht(s.price)}</div>
+        <button class="btn sm ghost add" data-add="${s.id}">${addon ? '+ เพิ่มบริการนี้' : '+ เลือก'}</button>
+      </div>
+    </div>`;
 }
 
 function renderCartBar() {
@@ -125,10 +151,10 @@ function renderCartBar() {
   $bar.innerHTML = `
     <div class="in" style="flex-direction:column;align-items:stretch;gap:10px">
       <div class="cart">
-        ${state.cart.map((id, i) => `<span class="c">คนที่ ${i + 1}: ${esc(styleById(id)?.name)} <button data-rm="${i}" aria-label="ลบ">×</button></span>`).join('')}
+        ${((labels) => state.cart.map((id, i) => `<span class="c">${labels[i]}: ${esc(styleById(id)?.name)} <button data-rm="${i}" aria-label="ลบ">×</button></span>`).join(''))(itemLabels(state.cart.map((id) => ({ kind: styleById(id)?.kind }))))}
       </div>
       <div class="row">
-        <div class="grow"><div class="tiny muted">${state.cart.length} คน · ราคาปกติ</div><b>${baht(total)}</b></div>
+        <div class="grow"><div class="tiny muted">${Math.max(1, peopleCount())} คน · ราคาปกติ</div><b>${baht(total)}</b></div>
         <button class="btn" id="next">เลือกวันเวลา →</button>
       </div>
     </div>`;
@@ -187,7 +213,7 @@ async function viewBook() {
 
     <div class="section-title">สรุปราคา</div>
     <div class="card" id="summary"><div class="spinner"></div></div>
-    <p class="tiny muted mt">${esc(state.info.settings.policy_text || '')}</p>
+    <div class="mt"><b class="small">เงื่อนไขการจอง</b>${policyList(state.info.settings.policy_text)}</div>
   `;
   bindGo();
   $app.querySelectorAll('[data-date]').forEach((b) =>
@@ -251,16 +277,16 @@ async function loadQuote() {
     const q = await api('/api/quote', { method: 'POST', body: { date: state.date, style_ids: state.cart, use_reward: state.useReward } });
     state.quote = q;
     el.innerHTML = `
-      ${q.items.map((it, i) => `
-        <div class="line"><div>คนที่ ${i + 1} · ${esc(it.name)}
+      ${((labels) => q.items.map((it, i) => `
+        <div class="line"><div>${labels[i]} · ${esc(it.name)}
           ${it.promotion ? `<div><span class="tag">${esc(it.promotion.name)}</span></div>` : ''}
           ${it.reward ? `<div><span class="tag" style="background:#fff3d6;color:#a2742a">ฟรีจากแต้มสะสม</span></div>` : ''}</div>
-          <div class="center">${it.price !== it.base_price ? `<span class="strike small">${baht(it.base_price)}</span><br>` : ''}<b>${baht(it.price)}</b></div></div>`).join('')}
+          <div class="center">${it.price !== it.base_price ? `<span class="strike small">${baht(it.base_price)}</span><br>` : ''}<b>${baht(it.price)}</b></div></div>`).join(''))(itemLabels(q.items))}
       ${q.discount ? `<div class="line small"><span class="muted">ส่วนลด</span><span style="color:var(--ok)">−${baht(q.discount)}</span></div>` : ''}
       <div class="line total"><span>ยอดรวม</span><span>${baht(q.total)}</span></div>
       <div class="line small"><span class="muted">มัดจำวันนี้</span><b style="color:var(--rose)">${baht(q.deposit_amount)}</b></div>
       <div class="line small"><span class="muted">ชำระที่ร้าน</span><span>${baht(q.total - q.deposit_amount)}</span></div>
-      ${q.hints.map((h) => `<div class="tiny mt" style="color:var(--rose)">💡 มากับเพื่อนอีก ${h.need_people - state.cart.length} คน ได้โปร "${esc(h.name)}"</div>`).join('')}
+      ${q.hints.map((h) => `<div class="tiny mt" style="color:var(--rose)">💡 มากับเพื่อนอีก ${h.need_people - Math.max(1, peopleCount())} คน ได้โปร "${esc(h.name)}"</div>`).join('')}
     `;
     $bar.querySelector('#bartotal').textContent = `${baht(q.total)} · มัดจำ ${baht(q.deposit_amount)}`;
   } catch (e) {
@@ -307,7 +333,7 @@ async function sendToChat(b) {
   const lines = [
     `📌 จองคิวต่อขนตา`,
     `รหัส: ${b.code}`,
-    ...b.items.map((it, i) => `คนที่ ${i + 1}: ${it.name}${it.reward ? ' (ฟรี)' : ''} ${baht(it.price)}`),
+    ...((labels) => b.items.map((it, i) => `${labels[i]}: ${it.name}${it.reward ? ' (ฟรี)' : ''} ${baht(it.price)}`))(itemLabels(b.items)),
     `วันที่: ${thaiDate(b.date)}`,
     `เวลา: ${b.start_time}–${b.end_time} น.`,
     `ยอดรวม: ${baht(b.total)} (มัดจำ ${baht(b.deposit_amount)})`,
@@ -342,7 +368,7 @@ async function viewPay(code) {
     <div class="card">
       <div class="row between"><b>รหัส ${esc(b.code)}</b><span class="st ${b.status}">${STATUS[b.status]}</span></div>
       <div class="mt">📅 ${thaiDate(b.date)} · ${b.start_time}–${b.end_time} น.</div>
-      ${b.items.map((it, i) => `<div class="line small"><span>คนที่ ${i + 1} · ${esc(it.name)}</span><span>${it.reward ? 'ฟรี' : baht(it.price)}</span></div>`).join('')}
+      ${((labels) => b.items.map((it, i) => `<div class="line small"><span>${labels[i]} · ${esc(it.name)}</span><span>${it.reward ? 'ฟรี' : baht(it.price)}</span></div>`).join(''))(itemLabels(b.items))}
       <div class="line total"><span>ยอดรวม</span><span>${baht(b.total)}</span></div>
       ${b.deposit_amount ? `<div class="line small"><span class="muted">มัดจำ</span><span>${baht(b.deposit_amount)}</span></div>
       <div class="line small"><span class="muted">ชำระที่ร้าน</span><span>${baht(b.total - b.deposit_amount)}</span></div>` : ''}
@@ -353,9 +379,13 @@ async function viewPay(code) {
         <div class="small muted">โอนมัดจำผ่านพร้อมเพย์</div>
         <div class="big">${baht(b.deposit_amount)}</div>
         ${s.promptpay_id ? `<div class="qr" id="qr"></div>
-          <div><b>${esc(s.promptpay_id)}</b></div>
-          ${s.promptpay_name ? `<div class="small muted">${esc(s.promptpay_name)}</div>` : ''}
-          <div class="tiny muted mt">กดค้างที่ QR เพื่อบันทึกรูป แล้วสแกนจากแอปธนาคาร</div>` : `<div class="small muted">ร้านยังไม่ได้ตั้งค่าพร้อมเพย์ กรุณาติดต่อร้าน</div>`}
+          <div class="tiny muted">QR นี้ใส่ยอด ${baht(b.deposit_amount)} ไว้ให้แล้ว · กดค้างเพื่อบันทึกรูป แล้วสแกนจากแอปธนาคาร</div>` : ''}
+        ${s.bank_account_no || s.promptpay_name ? `<div class="bankbox small">
+          ${s.bank_name ? `<div>ธนาคาร: <b>${esc(s.bank_name)}</b></div>` : ''}
+          ${s.bank_account_no ? `<div>เลขบัญชี: <b>${esc(s.bank_account_no)}</b> <button class="chip-btn" id="copyacc" style="padding:2px 8px">คัดลอก</button></div>` : ''}
+          ${s.promptpay_name ? `<div>ชื่อบัญชี: <b>${esc(s.promptpay_name)}</b></div>` : ''}
+        </div>` : ''}
+        ${!s.promptpay_id && !s.bank_account_no ? `<div class="small muted">ร้านยังไม่ได้ตั้งค่าบัญชีรับเงิน กรุณาติดต่อร้าน</div>` : ''}
         ${b.expires_at ? `<div class="small mt" style="color:var(--rose)">⏰ กรุณาโอนภายใน ${bkkTime(b.expires_at)} น. <span id="cd"></span></div>` : ''}
         ${b.slip_note ? `<div class="result bad small">${esc(b.slip_note)}</div>` : ''}
         <input type="file" accept="image/*" id="slip" class="hidden" />
@@ -363,7 +393,8 @@ async function viewPay(code) {
         <div class="tiny muted mt">หรือส่งรูปสลิปในแชท LINE ของร้านก็ได้ค่ะ</div>
         <div id="res"></div>
       </div>
-      <button class="btn line mt" id="cancel">ยกเลิกการจองนี้</button>` : ''}
+      <div class="card mt"><b class="small">เงื่อนไขการจอง</b>${policyList(s.policy_text)}</div>
+      <button class="btn outline mt" id="cancel">ยกเลิกการจองนี้</button>` : ''}
 
     ${b.status === 'verifying' ? `<div class="result wait">🧾 ได้รับสลิปแล้ว แอดมินกำลังตรวจสอบ จะแจ้งผลทาง LINE ค่ะ</div>` : ''}
     ${b.status === 'confirmed' ? `<div class="result ok">✅ ยืนยันคิวเรียบร้อย แล้วพบกันนะคะ 💕</div>` : ''}
@@ -375,6 +406,9 @@ async function viewPay(code) {
 
   if (!pending) return;
   if (s.promptpay_id) drawQR($app.querySelector('#qr'), promptPayPayload(s.promptpay_id, b.deposit_amount));
+  $app.querySelector('#copyacc')?.addEventListener('click', () =>
+    navigator.clipboard?.writeText(s.bank_account_no.replace(/[^0-9]/g, '')).then(() => toast('คัดลอกเลขบัญชีแล้ว')),
+  );
   if (b.expires_at) {
     const cd = $app.querySelector('#cd');
     const tick = () => {

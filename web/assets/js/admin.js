@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1794861157';
+} from './core.js?v=1794863268';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -72,7 +72,7 @@ function dialog(title, body, { onSave, saveText = 'บันทึก', extraFoo
   const d = $dlg();
   d.innerHTML = `<div class="dh"><span>${title}</span><button class="back" data-x>✕</button></div>
     <div class="db">${body}</div>
-    ${onSave || extraFoot ? `<div class="df">${extraFoot}<button class="btn line" data-x style="flex:1">ปิด</button>${onSave ? `<button class="btn" data-save style="flex:2">${saveText}</button>` : ''}</div>` : ''}`;
+    ${onSave || extraFoot ? `<div class="df">${extraFoot}<button class="btn outline" data-x style="flex:1">ปิด</button>${onSave ? `<button class="btn" data-save style="flex:2">${saveText}</button>` : ''}</div>` : ''}`;
   d.querySelectorAll('[data-x]').forEach((b) => (b.onclick = () => d.close()));
   if (onSave) {
     d.querySelector('[data-save]').onclick = async (ev) => {
@@ -136,9 +136,9 @@ async function bookings() {
 
 function bookingCard(b) {
   const acts = {
-    pending_deposit: [['confirm', 'ยืนยันมัดจำ (รับเงินแล้ว)', 'ok'], ['cancel', 'ยกเลิก', 'line']],
-    verifying: [['confirm', '✅ สลิปถูกต้อง', 'ok'], ['reject_slip', '❌ สลิปไม่ถูกต้อง', 'bad'], ['cancel', 'ยกเลิก', 'line']],
-    confirmed: [['complete', '💗 มาใช้บริการแล้ว (+1 แต้ม)', 'dark'], ['reschedule', 'เลื่อนนัด', 'line'], ['cancel', 'ยกเลิก', 'line']],
+    pending_deposit: [['confirm', 'ยืนยันมัดจำ (รับเงินแล้ว)', 'ok'], ['cancel', 'ยกเลิก', 'outline']],
+    verifying: [['confirm', '✅ สลิปถูกต้อง', 'ok'], ['reject_slip', '❌ สลิปไม่ถูกต้อง', 'bad'], ['cancel', 'ยกเลิก', 'outline']],
+    confirmed: [['complete', '💗 มาใช้บริการแล้ว (+1 แต้ม)', 'dark'], ['reschedule', 'เลื่อนนัด', 'outline'], ['cancel', 'ยกเลิก', 'outline']],
   }[b.status] || [];
   return `
     <div class="card">
@@ -150,7 +150,7 @@ function bookingCard(b) {
           <div class="tiny muted">LINE: ${esc(b.display_name || '-')} · แต้ม ${b.stamps ?? 0} · ${b.code}</div>
         </div>
       </div>
-      ${b.items.map((it, i) => `<div class="line small"><span>คนที่ ${i + 1} · ${esc(it.name)} ${it.promotion ? `<span class="tag">${esc(it.promotion.name)}</span>` : ''}${it.reward ? '<span class="tag">ฟรีจากแต้ม</span>' : ''}</span><span>${baht(it.price)}</span></div>`).join('')}
+      ${((labels) => b.items.map((it, i) => `<div class="line small"><span>${labels[i]} · ${esc(it.name)} ${it.promotion ? `<span class="tag">${esc(it.promotion.name)}</span>` : ''}${it.reward ? '<span class="tag">ฟรีจากแต้ม</span>' : ''}</span><span>${baht(it.price)}</span></div>`).join(''))((() => { let n = 0; return b.items.map((it) => (it.kind === 'addon' ? '+ เสริม' : `คนที่ ${++n}`)); })())}
       <div class="line small"><span class="muted">รวม / มัดจำ / ค้างชำระ</span><b>${baht(b.total)} / ${baht(b.deposit_amount)} / ${baht(b.total - (['confirmed', 'completed'].includes(b.status) ? b.deposit_amount : 0))}</b></div>
       ${b.note ? `<div class="small mt">📝 ${esc(b.note)}</div>` : ''}
       ${b.slip_note || b.slip_trans_ref ? `<div class="tiny muted mt">สลิป: ${esc(b.slip_note)} ${b.slip_trans_ref ? '· ref ' + esc(b.slip_trans_ref) : ''} ${b.slip_amount ? '· ' + baht(b.slip_amount) : ''}</div>` : ''}
@@ -193,10 +193,11 @@ async function styles() {
         ${s.image_id ? `<img class="thumb" src="${imgUrl(s.image_id)}">` : '<div class="thumb">👁️</div>'}
         <div class="grow"><b>${esc(s.name)}</b> ${s.active ? '' : '<span class="tag">ซ่อน</span>'}
           <div class="small muted">${esc(s.description)}</div>
-          <div class="small">${baht(s.price)} · ${s.duration_min} นาที · ลำดับ ${s.sort}</div></div>
-        <button class="btn sm line" data-edit="${s.id}">แก้ไข</button>
+          <div class="small">${baht(s.price)} · ${s.duration_min} นาที · ลำดับ ${s.sort}</div>
+          <div class="tiny muted">${esc(s.category || '')}${s.kind === 'addon' ? ' · บริการเสริม' : ''}</div></div>
+        <button class="btn sm outline" data-edit="${s.id}">แก้ไข</button>
       </div>`).join('') || '<div class="empty">ยังไม่มีทรง</div>'}</div>`;
-  $view().querySelector('#add').onclick = () => styleForm({ name: '', description: '', price: '', duration_min: 120, sort: st.styles.length + 1, active: 1 });
+  $view().querySelector('#add').onclick = () => styleForm({ name: '', description: '', price: '', duration_min: 120, sort: st.styles.length + 1, active: 1, category: st.styles[0]?.category || 'ต่อขนตา (เลือกทรง)', kind: 'main' });
   $view().querySelectorAll('[data-edit]').forEach((b) => (b.onclick = () => styleForm(st.styles.find((s) => s.id === Number(b.dataset.edit)))));
 }
 
@@ -206,7 +207,14 @@ function styleForm(s) {
     <label class="f">รูป</label>
     <div class="row"><div class="thumb" id="pv" style="width:96px;height:96px;flex-basis:96px;background-size:cover;background-position:center;${imageId ? `background-image:url(${imgUrl(imageId)})` : ''}">${imageId ? '' : '👁️'}</div>
       <div><input type="file" accept="image/*" id="file" class="hidden"><button class="btn sm ghost" id="pick">เลือกรูป</button><div class="tiny muted mt">ระบบย่อรูปให้อัตโนมัติ</div></div></div>
-    <label class="f">ชื่อทรง</label><input class="input" id="name" value="${esc(s.name)}" maxlength="80">
+    <label class="f">ชื่อทรง / บริการ</label><input class="input" id="name" value="${esc(s.name)}" maxlength="80">
+    <div class="grid2">
+      <div><label class="f">หมวด (หัวข้อในหน้าจอง)</label><input class="input" id="cat" list="cats" value="${esc(s.category || '')}" maxlength="60">
+        <datalist id="cats">${[...new Set(st.styles.map((x) => x.category).filter(Boolean))].map((c) => `<option value="${esc(c)}">`).join('')}</datalist></div>
+      <div><label class="f">ประเภท</label><select class="input" id="kind">
+        <option value="main">บริการหลัก (นับเป็น 1 คน)</option>
+        <option value="addon" ${s.kind === 'addon' ? 'selected' : ''}>บริการเสริม (เพิ่มคู่บริการหลัก)</option></select></div>
+    </div>
     <label class="f">คำอธิบาย</label><input class="input" id="desc" value="${esc(s.description)}" maxlength="300">
     <div class="grid2">
       <div><label class="f">ราคา (บาท)</label><input class="input" id="price" type="number" min="0" value="${s.price}"></div>
@@ -218,7 +226,7 @@ function styleForm(s) {
     onSave: async (d) => {
       await api(`/api/admin/styles${s.id ? '/' + s.id : ''}`, {
         method: s.id ? 'PUT' : 'POST',
-        body: { name: val(d, '#name'), description: val(d, '#desc'), price: val(d, '#price'), duration_min: val(d, '#dur'), sort: val(d, '#sort'), active: val(d, '#active') === '1', image_id: imageId },
+        body: { name: val(d, '#name'), description: val(d, '#desc'), price: val(d, '#price'), duration_min: val(d, '#dur'), sort: val(d, '#sort'), active: val(d, '#active') === '1', image_id: imageId, category: val(d, '#cat'), kind: val(d, '#kind') },
       });
       toast('บันทึกแล้ว');
       show();
@@ -261,7 +269,7 @@ async function promos() {
         <div class="row between"><b>${esc(p.name)}</b><span class="st ${state(p) === 'ใช้งานอยู่' ? 'confirmed' : 'completed'}">${state(p)}</span></div>
         <div class="small">${esc(promoText(p, st.styles))}</div>
         <div class="tiny muted">${esc(promoRange(p) || 'ไม่จำกัดวัน')} ${p.style_ids?.length ? '· เฉพาะ ' + p.style_ids.map((id) => esc(st.styles.find((s) => s.id === id)?.name || '#' + id)).join(', ') : ''}</div>
-        <div class="actions"><button class="btn sm line" data-edit="${p.id}">แก้ไข</button></div>
+        <div class="actions"><button class="btn sm outline" data-edit="${p.id}">แก้ไข</button></div>
       </div>`).join('') || '<div class="empty">ยังไม่มีโปรโมชั่น</div>'}`;
   $view().querySelector('#add').onclick = () => promoForm({ name: '', type: 'discount', min_people: 2, discount: 50, active: true });
   $view().querySelectorAll('[data-edit]').forEach((b) => (b.onclick = () => promoForm(promotions.find((p) => p.id === Number(b.dataset.edit)))));
@@ -373,7 +381,7 @@ async function holidays() {
     </div>
     <div class="mt">${list.map((h) => `
       <div class="card row between"><div><b>${thaiDate(h.date)}</b> <span class="small muted">${esc(h.note)}</span></div>
-      <button class="btn sm line" data-del="${h.date}">ลบ</button></div>`).join('') || '<div class="empty">ยังไม่มีวันหยุดพิเศษ</div>'}</div>`;
+      <button class="btn sm outline" data-del="${h.date}">ลบ</button></div>`).join('') || '<div class="empty">ยังไม่มีวันหยุดพิเศษ</div>'}</div>`;
   $view().querySelector('#add').onclick = async () => {
     const date = val($view(), '#d1');
     if (!date) return toast('เลือกวันที่');
@@ -403,7 +411,7 @@ async function users(q = st.q || '') {
         ${u.picture_url ? `<img class="avatar" src="${esc(u.picture_url)}">` : '<div class="avatar"></div>'}
         <div class="grow"><b>${esc(u.display_name || '-')}</b> <span class="small muted">${esc(u.phone)}</span>
           <div class="tiny muted">มาแล้ว ${u.total_visits} ครั้ง · แต้ม <b style="color:var(--rose)">${u.stamps}/${req}</b></div></div>
-        <div class="row" style="gap:4px"><button class="btn sm line" data-st="${u.line_user_id}" data-v="${u.stamps - 1}">−</button><button class="btn sm ghost" data-st="${u.line_user_id}" data-v="${u.stamps + 1}">+</button></div>
+        <div class="row" style="gap:4px"><button class="btn sm outline" data-st="${u.line_user_id}" data-v="${u.stamps - 1}">−</button><button class="btn sm ghost" data-st="${u.line_user_id}" data-v="${u.stamps + 1}">+</button></div>
       </div>`).join('') || '<div class="empty">ไม่พบลูกค้า</div>'}</div>`;
   let t;
   $view().querySelector('#q').oninput = (e) => {
@@ -428,12 +436,13 @@ async function settings() {
     <div class="card">
       <b>ข้อมูลร้าน</b>
       ${f('shop_name', 'ชื่อร้าน')}${f('shop_phone', 'เบอร์ร้าน')}${f('shop_address', 'ที่อยู่ / Google Maps')}
-      <label class="f">ข้อความนโยบาย (แสดงตอนจอง)</label><textarea class="input" data-k="policy_text" rows="2">${esc(s.policy_text)}</textarea>
+      <label class="f">เงื่อนไขการจอง (1 บรรทัด = 1 ข้อ)</label><textarea class="input" data-k="policy_text" rows="5">${esc(s.policy_text)}</textarea>
     </div>
     <div class="card">
       <b>มัดจำ</b>
       <div class="grid2">${f('deposit_amount', 'ยอดมัดจำ (บาท)', 'number')}${f('deposit_timeout_min', 'ถือคิวรอโอน (นาที)', 'number')}</div>
-      ${f('promptpay_id', 'พร้อมเพย์ (เบอร์/เลขบัตร)', 'text', 'ใช้สร้าง QR ให้ลูกค้าสแกนจ่าย')}${f('promptpay_name', 'ชื่อบัญชี')}
+      ${f('promptpay_id', 'พร้อมเพย์ (เบอร์ / เลขบัตร / e-Wallet ID)', 'text', 'ใช้สร้าง QR ที่ใส่ยอดมัดจำให้อัตโนมัติ')}${f('promptpay_name', 'ชื่อบัญชี')}
+      <div class="grid2">${f('bank_name', 'ธนาคาร')}${f('bank_account_no', 'เลขบัญชี')}</div>
       <div class="tiny mt">ตรวจสลิปอัตโนมัติ: ${slip_auto ? '<b style="color:var(--ok)">เปิด (EasySlip)</b>' : '<b>ปิด</b> — แอดมินตรวจเอง (ตั้ง EASYSLIP_API_KEY เพื่อเปิด)'}</div>
     </div>
     <div class="card">
@@ -463,7 +472,7 @@ async function settings() {
       <b>แอดมิน</b>
       ${adm.env_admins.map((id) => `<div class="small mt"><span class="code">${esc(id)}</span> <span class="tag">ตั้งใน worker</span></div>`).join('')}
       ${adm.admins.map((a) => `<div class="row between mt"><div class="small">${esc(a.name || a.display_name || '')} <span class="code">${esc(a.line_user_id)}</span></div>
-        ${a.line_user_id !== st.me.user.line_user_id ? `<button class="btn sm line" data-rmadm="${a.line_user_id}">ลบ</button>` : ''}</div>`).join('')}
+        ${a.line_user_id !== st.me.user.line_user_id ? `<button class="btn sm outline" data-rmadm="${a.line_user_id}">ลบ</button>` : ''}</div>`).join('')}
       <label class="f">เพิ่มแอดมิน (LINE User ID ขึ้นต้นด้วย U)</label>
       <div class="row"><input class="input" id="newadm" placeholder="U1234..."><input class="input" id="newname" placeholder="ชื่อ" style="max-width:110px"><button class="btn sm" id="addadm">เพิ่ม</button></div>
       <div class="tiny muted mt">ให้คนที่จะเป็นแอดมินเปิดลิงก์ LIFF /admin.html จะเห็น User ID ของตัวเอง</div>

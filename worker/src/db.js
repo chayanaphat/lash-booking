@@ -7,6 +7,8 @@ export const DEFAULT_SETTINGS = {
   deposit_amount: 100,
   promptpay_id: '', // เบอร์มือถือ / เลขบัตรประชาชน
   promptpay_name: '', // ชื่อบัญชี (แสดงให้ลูกค้าเห็น)
+  bank_name: '',
+  bank_account_no: '',
   slot_step_min: 30,
   capacity: 1, // จำนวนช่าง/คิวที่ทำพร้อมกันได้
   booking_days_ahead: 30,
@@ -16,7 +18,7 @@ export const DEFAULT_SETTINGS = {
   stamps_required: 10,
   notify_admins: 1, // push แจ้งแอดมินเมื่อมีคิวใหม่/รอตรวจสลิป (ใช้โควต้าข้อความ)
   notify_customer: 1, // push แจ้งลูกค้าเมื่อแอดมินยืนยัน/ปฏิเสธสลิป
-  policy_text: 'มัดจำ 100 บาท หักจากค่าบริการวันมาใช้บริการ / เลื่อนนัดแจ้งล่วงหน้า 24 ชม.',
+  policy_text: 'มัดจำ 100 บาท (ที่เหลือชำระวันทำ)',
 };
 const NUMERIC = new Set(
   Object.entries(DEFAULT_SETTINGS)
@@ -24,7 +26,7 @@ const NUMERIC = new Set(
     .map(([k]) => k),
 );
 export const PUBLIC_SETTING_KEYS = [
-  'shop_name', 'shop_phone', 'shop_address', 'deposit_amount', 'promptpay_id', 'promptpay_name',
+  'shop_name', 'shop_phone', 'shop_address', 'deposit_amount', 'promptpay_id', 'promptpay_name', 'bank_name', 'bank_account_no',
   'booking_days_ahead', 'max_people', 'stamps_required', 'policy_text', 'deposit_timeout_min', 'min_lead_min',
 ];
 

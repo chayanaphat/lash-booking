@@ -9,7 +9,10 @@ export function activePromotions(promos, date) {
 
 function promoPrice(p, style) {
   const base = style.price;
-  if (p.style_ids && p.style_ids.length && !p.style_ids.map(Number).includes(Number(style.id))) return null;
+  const listed = p.style_ids && p.style_ids.length;
+  if (listed && !p.style_ids.map(Number).includes(Number(style.id))) return null;
+  // โปร "ทุกทรง" ไม่รวมบริการเสริม (add-on) ยกเว้นเลือกไว้ใน style_ids
+  if (!listed && p.type !== 'fixed_price' && style.kind === 'addon') return null;
   switch (p.type) {
     case 'fixed_price': {
       const v = p.fixed_prices?.[style.id] ?? p.fixed_prices?.[String(style.id)];
@@ -25,13 +28,13 @@ function promoPrice(p, style) {
 
 /**
  * @param styles      map id -> {id,name,price,duration_min,image_id}
- * @param styleIds    one entry per person, e.g. [1, 2]  (2 people)
+ * @param styleIds    services in the booking; each 'main' service = 1 person, 'addon' items attach to them
  * @param promos      all promotions (parsed)
  * @param date        service date
  * @param useReward   redeem loyalty reward -> most expensive item free
  */
 export function quote(styles, styleIds, promos, date, { useReward = false } = {}) {
-  const people = styleIds.length;
+  const people = Math.max(1, styleIds.filter((id) => styles[id]?.kind !== 'addon').length);
   const active = activePromotions(promos, date);
 
   const items = styleIds.map((sid) => {
@@ -51,6 +54,7 @@ export function quote(styles, styleIds, promos, date, { useReward = false } = {}
       style_id: s.id,
       name: s.name,
       image_id: s.image_id || null,
+      kind: s.kind || 'main',
       duration_min: s.duration_min || 120,
       base_price: s.price,
       price: best,
@@ -60,10 +64,11 @@ export function quote(styles, styleIds, promos, date, { useReward = false } = {}
   });
 
   if (useReward && items.length) {
-    let idx = 0;
+    let idx = -1;
     items.forEach((it, i) => {
-      if (it.price > items[idx].price) idx = i;
+      if (it.kind !== 'addon' && (idx < 0 || it.price > items[idx].price)) idx = i;
     });
+    if (idx < 0) idx = 0;
     items[idx] = { ...items[idx], price: 0, reward: true, promotion: null };
   }
 

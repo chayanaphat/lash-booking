@@ -1,13 +1,14 @@
 :root {
-  --bg: #fbf6f3;
+  /* Kingyo Eyelash — lavender / cream / orange (จากใบราคาและโลโก้) */
+  --bg: #fbf3ea;
   --card: #ffffff;
-  --ink: #2f2427;
-  --muted: #8c7b7f;
-  --line: #efe3df;
-  --rose: #b05a6f;
-  --rose-2: #d98ea0;
-  --rose-soft: #f8e6ea;
-  --gold: #c49a5a;
+  --ink: #3e2a4a;
+  --muted: #8a7a90;
+  --line: #efe0ef;
+  --rose: #8e5ba8;
+  --rose-2: #c595d3;
+  --rose-soft: #f5e4f8;
+  --gold: #f28a3c;
   --ok: #3e8e6e;
   --ok-soft: #e2f5ec;
   --warn: #c07a1d;
@@ -43,7 +44,7 @@ a { color: var(--rose); }
 
 /* header */
 .hero {
-  background: linear-gradient(135deg, #f3d4db 0%, #fbeee9 60%, #fff 100%);
+  background: linear-gradient(135deg, #e9d6ec 0%, #f8e3f7 55%, #fbf3ea 100%);
   border-radius: 0 0 28px 28px;
   padding: 22px 18px 18px;
   margin: -16px -16px 16px;
@@ -70,7 +71,7 @@ a { color: var(--rose); }
 .styles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .style { background: #fff; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column; border: 2px solid transparent; transition: border-color .15s; }
 .style.sel { border-color: var(--rose); }
-.style .ph { aspect-ratio: 1/1; width: 100%; object-fit: cover; background: linear-gradient(135deg, #f6dfe4, #fbefe9); display: grid; place-items: center; font-size: 42px; }
+.style .ph { aspect-ratio: 1/1; width: 100%; object-fit: cover; background: linear-gradient(135deg, #ecd9f0, #fbefe6); display: grid; place-items: center; font-size: 42px; }
 .style .b { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .style .n { font-weight: 600; font-size: 14px; }
 .style .p { font-weight: 600; color: var(--rose); }
@@ -83,7 +84,7 @@ a { color: var(--rose); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn.sm { width: auto; padding: 8px 12px; font-size: 13px; border-radius: 10px; }
 .btn.ghost { background: var(--rose-soft); color: var(--rose); }
-.btn.line { background: #fff; border: 1px solid var(--line); color: var(--ink); }
+.btn.outline { background: #fff; border: 1px solid var(--line); color: var(--ink); }
 .btn.ok { background: var(--ok); }
 .btn.bad { background: var(--bad); }
 .btn.dark { background: var(--ink); }
@@ -117,7 +118,7 @@ a { color: var(--rose); }
 label.f { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 4px; }
 .input, select.input, textarea.input { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px; background: #fff; outline: none; }
 .input:focus { border-color: var(--rose-2); }
-.check { display: flex; gap: 10px; align-items: center; padding: 12px; border-radius: 12px; background: #fff8ec; border: 1px dashed var(--gold); cursor: pointer; }
+.check { display: flex; gap: 10px; align-items: center; padding: 12px; border-radius: 12px; background: #fff3e8; border: 1px dashed var(--gold); cursor: pointer; }
 
 /* summary lines */
 .line { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; }
@@ -133,7 +134,7 @@ label.f { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 4
 .st.cancelled { background: var(--bad-soft); color: var(--bad); }
 
 /* stamp card */
-.stampcard { background: linear-gradient(135deg, #2f2427, #5a3b44); color: #fff; border-radius: 20px; padding: 18px; box-shadow: var(--shadow); }
+.stampcard { background: linear-gradient(135deg, #4a2c5c, #8e5ba8); color: #fff; border-radius: 20px; padding: 18px; box-shadow: var(--shadow); }
 .stamps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 14px; }
 .stamp { aspect-ratio: 1; border-radius: 50%; border: 2px dashed rgba(255,255,255,.35); display: grid; place-items: center; font-size: 18px; }
 .stamp.on { background: var(--rose-2); border: 2px solid var(--rose-2); }
@@ -179,3 +180,14 @@ dialog .df .btn { width: auto; flex: 1; white-space: nowrap; }
 .grid2 { align-items: end; }
 .grid2 > * { min-width: 0; }
 .input { min-width: 0; }
+
+/* Kingyo additions */
+.logo { width: 64px; height: 64px; border-radius: 18px; object-fit: cover; box-shadow: var(--shadow); }
+.brand { font-family: 'Mitr', 'IBM Plex Sans Thai', sans-serif; font-weight: 500; letter-spacing: 0; }
+.hero h1 { font-size: 22px; line-height: 1.25; }
+.style.addon .ph { aspect-ratio: 16/9; font-size: 30px; }
+.style .p { color: var(--gold); }
+.policy { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
+.policy li { margin: 2px 0; }
+.bankbox { background: var(--rose-soft); border-radius: 14px; padding: 12px 14px; text-align: left; margin-top: 12px; }
+.cat-title { font-size: 15px; font-weight: 600; margin: 18px 0 8px; color: var(--rose); }
