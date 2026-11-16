@@ -318,7 +318,7 @@ on('POST', '/api/admin/richmenu', 'admin', async ({ env, req }) => {
   const auth = { authorization: `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}` };
   const liff = (q = '') => `https://liff.line.me/${env.LIFF_ID}${q}`;
   const menu = {
-    size: { width: 2500, height: 843 }, selected: true, name: 'lash-booking-main', chatBarText: 'จองคิว / โปรโมชั่น',
+    size: { width: 2500, height: 843 }, selected: true, name: 'lash-booking-main', chatBarText: 'เมนูจองคิว',
     areas: [
       { bounds: { x: 0, y: 0, width: 1250, height: 843 }, action: { type: 'uri', label: 'จองคิว', uri: liff() } },
       { bounds: { x: 1250, y: 0, width: 1250, height: 421 }, action: { type: 'uri', label: 'โปรโมชั่น', uri: liff('?p=promos') } },
