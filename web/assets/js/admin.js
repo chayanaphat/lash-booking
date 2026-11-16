@@ -35,7 +35,9 @@ const st = { tab: 'bookings', styles: [], range: 'today', from: bkkToday(), stat
     st.styles = (await api('/api/admin/styles')).styles;
     renderShell();
   } catch (e) {
-    $app.innerHTML = `<div class="empty">โหลดไม่สำเร็จ: ${esc(errText(e))}</div>`;
+    $app.innerHTML = `<div class="empty">โหลดไม่สำเร็จ: ${esc(errText(e))}<br><span class="tiny">${esc(e.data?.detail || '')}</span>
+      ${profile?.userId ? `<p class="small">LINE User ID ของคุณ:<br><span class="code">${esc(profile.userId)}</span></p>` : ''}
+      <button class="btn sm" onclick="sessionStorage.clear();location.reload()">ลองใหม่</button></div>`;
   }
 })();
 

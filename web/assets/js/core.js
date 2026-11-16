@@ -19,18 +19,31 @@ export async function initLiff() {
     liff.login({ redirectUri: location.href });
     return new Promise(() => {});
   }
-  idToken = liff.getIDToken();
-  if (tokenExpired(idToken)) {
-    liff.logout();
-    liff.login({ redirectUri: location.href });
-    return new Promise(() => {});
-  }
   try {
     profile = await liff.getProfile();
   } catch {
     profile = { userId: '', displayName: '' };
   }
+  idToken = liff.getIDToken();
+  if (!idToken || tokenExpired(idToken)) {
+    if (relogin()) return new Promise(() => {});
+    throw new Error(idToken ? 'id_token_expired' : 'no_id_token (เปิด scope openid ใน LIFF)');
+  }
   return { dev: false };
+}
+
+// login ใหม่ได้ครั้งเดียวต่อ 2 นาที กันวนลูป
+function relogin() {
+  const last = Number(sessionStorage.getItem('relogin_at') || 0);
+  if (Date.now() - last < 120_000) return false;
+  sessionStorage.setItem('relogin_at', String(Date.now()));
+  if (liff.isInClient()) {
+    location.reload();
+  } else {
+    liff.logout();
+    liff.login({ redirectUri: location.href });
+  }
+  return true;
 }
 
 function tokenExpired(t) {
@@ -52,10 +65,7 @@ export async function api(path, { method = 'GET', body } = {}) {
   try {
     data = await res.json();
   } catch {}
-  if (res.status === 401 && !devUser && window.liff) {
-    liff.logout();
-    liff.login({ redirectUri: location.href });
-  }
+  if (res.status === 401 && !devUser && window.liff && relogin()) return new Promise(() => {});
   if (!res.ok) throw Object.assign(new Error(data.error || 'request_failed'), { status: res.status, data });
   return data;
 }

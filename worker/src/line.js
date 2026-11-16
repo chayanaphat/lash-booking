@@ -67,7 +67,15 @@ export async function userFromRequest(req, env) {
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ id_token: token, client_id: env.LINE_LOGIN_CHANNEL_ID || '' }),
   });
-  if (!r.ok) throw new HttpError(401, 'invalid_token');
+  if (!r.ok) {
+    let detail = '';
+    try {
+      const e = await r.json();
+      detail = e.error_description || e.error || '';
+    } catch {}
+    console.warn('id_token verify failed', r.status, detail);
+    throw new HttpError(401, 'invalid_token', { detail });
+  }
   const p = await r.json();
   const user = { userId: p.sub, name: p.name || '', picture: p.picture || null };
   if (tokenCache.size > 500) tokenCache.clear();

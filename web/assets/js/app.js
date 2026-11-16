@@ -38,7 +38,7 @@ const state = {
     render();
   } catch (e) {
     console.error(e);
-    $app.innerHTML = `<div class="empty">โหลดไม่สำเร็จ<br><span class="small">${esc(e.message)}</span><br><br><button class="btn sm" onclick="location.reload()">ลองใหม่</button></div>`;
+    $app.innerHTML = `<div class="empty">โหลดไม่สำเร็จ<br><span class="small">${esc(e.message)} ${esc(e.data?.detail || '')}</span><br><br><button class="btn sm" onclick="sessionStorage.clear();location.reload()">ลองใหม่</button></div>`;
   }
 })();
 
