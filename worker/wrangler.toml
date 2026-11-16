@@ -7,7 +7,7 @@ workers_dev = true
 [[d1_databases]]
 binding = "DB"
 database_name = "lash-booking"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "ad0cfe80-86d0-406b-b2fe-c5ff06d7bcd0"
 
 # ยกเลิกคิวที่ไม่โอนมัดจำภายในเวลาที่กำหนด (ทุก 10 นาที)
 [triggers]

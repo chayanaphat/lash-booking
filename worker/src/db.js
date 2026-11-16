@@ -1,7 +1,7 @@
 import { HttpError, nowISO, parseJSON } from './util.js';
 
 export const DEFAULT_SETTINGS = {
-  shop_name: 'Lash Studio',
+  shop_name: 'Kingyo Eyelash',
   shop_phone: '',
   shop_address: '',
   deposit_amount: 100,
