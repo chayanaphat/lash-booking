@@ -47,6 +47,22 @@ export async function verifySignature(secret, body, signature) {
   return diff === 0;
 }
 
+// ---------- LIFF access token -> user (fallback when the client has no ID token) ----------
+async function userFromAccessToken(env, token) {
+  const at = token.slice(3);
+  const v = await fetch('https://api.line.me/oauth2/v2.1/verify?access_token=' + encodeURIComponent(at));
+  const vj = await v.json().catch(() => ({}));
+  if (!v.ok) throw new HttpError(401, 'invalid_token', { detail: vj.error_description || 'access token verify failed' });
+  if (String(vj.client_id) !== String(env.LINE_LOGIN_CHANNEL_ID)) throw new HttpError(401, 'invalid_token', { detail: 'token from another channel' });
+  const pr = await fetch('https://api.line.me/v2/profile', { headers: { authorization: `Bearer ${at}` } });
+  if (!pr.ok) throw new HttpError(401, 'invalid_token', { detail: 'profile fetch failed' });
+  const p = await pr.json();
+  const user = { userId: p.userId, name: p.displayName || '', picture: p.pictureUrl || null };
+  if (tokenCache.size > 500) tokenCache.clear();
+  tokenCache.set(token, { user, exp: Date.now() + Math.min((vj.expires_in || 600) * 1000, 10 * 60000) });
+  return user;
+}
+
 // ---------- LIFF ID token -> user ----------
 const tokenCache = new Map();
 
@@ -61,6 +77,7 @@ export async function userFromRequest(req, env) {
 
   const hit = tokenCache.get(token);
   if (hit && hit.exp > Date.now()) return hit.user;
+  if (token.startsWith('at:')) return userFromAccessToken(env, token);
 
   const r = await fetch('https://api.line.me/oauth2/v2.1/verify', {
     method: 'POST',

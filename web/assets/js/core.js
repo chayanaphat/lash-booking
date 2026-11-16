@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js';
+import { CONFIG } from './config.js?v=1794861157';
 
 let idToken = null;
 let devUser = null;
@@ -25,9 +25,13 @@ export async function initLiff() {
     profile = { userId: '', displayName: '' };
   }
   idToken = liff.getIDToken();
-  if (!idToken || tokenExpired(idToken)) {
-    if (relogin()) return new Promise(() => {});
-    throw new Error(idToken ? 'id_token_expired' : 'no_id_token (เปิด scope openid ใน LIFF)');
+  if (idToken && tokenExpired(idToken)) idToken = null;
+  if (!idToken) {
+    // บาง client ไม่คืน ID token — ใช้ access token แทน (server ตรวจกับ LINE ว่าเป็นของ channel นี้)
+    const at = liff.getAccessToken();
+    if (at) idToken = 'at:' + at;
+    else if (relogin()) return new Promise(() => {});
+    else throw new Error('no_token');
   }
   return { dev: false };
 }
