@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1794863847';
+} from './core.js?v=1794864059';
 
 const $app = document.getElementById('app');
 const TABS = [
