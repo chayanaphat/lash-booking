@@ -309,6 +309,41 @@ on('PUT', '/api/admin/users/:id', 'admin', async ({ env, req, params }) => {
   return json({ ok: true });
 });
 
+// rich menu — ใช้ token ของ worker เอง (ไม่ต้องคัดลอก token ไปรันสคริปต์)
+on('POST', '/api/admin/richmenu', 'admin', async ({ env, req }) => {
+  const body = await readJson(req);
+  const imageUrl = str(body.image_url, 300);
+  if (!/^https:\/\//.test(imageUrl)) throw new HttpError(400, 'invalid_image_url');
+  if (!env.LINE_CHANNEL_ACCESS_TOKEN) throw new HttpError(400, 'line_token_missing');
+  const auth = { authorization: `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}` };
+  const liff = (q = '') => `https://liff.line.me/${env.LIFF_ID}${q}`;
+  const menu = {
+    size: { width: 2500, height: 843 }, selected: true, name: 'lash-booking-main', chatBarText: 'จองคิว / โปรโมชั่น',
+    areas: [
+      { bounds: { x: 0, y: 0, width: 1250, height: 843 }, action: { type: 'uri', label: 'จองคิว', uri: liff() } },
+      { bounds: { x: 1250, y: 0, width: 1250, height: 421 }, action: { type: 'uri', label: 'โปรโมชั่น', uri: liff('?p=promos') } },
+      { bounds: { x: 1250, y: 421, width: 1250, height: 422 }, action: { type: 'uri', label: 'แต้มสะสม', uri: liff('?p=my') } },
+    ],
+  };
+  const list = await (await fetch('https://api.line.me/v2/bot/richmenu/list', { headers: auth })).json();
+  for (const m of list.richmenus || []) {
+    if (m.name === menu.name) await fetch(`https://api.line.me/v2/bot/richmenu/${m.richMenuId}`, { method: 'DELETE', headers: auth });
+  }
+  const created = await (await fetch('https://api.line.me/v2/bot/richmenu', {
+    method: 'POST', headers: { ...auth, 'content-type': 'application/json' }, body: JSON.stringify(menu),
+  })).json();
+  if (!created.richMenuId) throw new HttpError(502, 'richmenu_create_failed', { detail: created.message });
+  const img = await fetch(imageUrl);
+  if (!img.ok) throw new HttpError(400, 'image_fetch_failed');
+  const up = await fetch(`https://api-data.line.me/v2/bot/richmenu/${created.richMenuId}/content`, {
+    method: 'POST', headers: { ...auth, 'content-type': img.headers.get('content-type') || 'image/jpeg' }, body: await img.arrayBuffer(),
+  });
+  if (!up.ok) throw new HttpError(502, 'richmenu_upload_failed', { detail: await up.text() });
+  const def = await fetch(`https://api.line.me/v2/bot/user/all/richmenu/${created.richMenuId}`, { method: 'POST', headers: auth });
+  if (!def.ok) throw new HttpError(502, 'richmenu_default_failed', { detail: await def.text() });
+  return json({ ok: true, richMenuId: created.richMenuId });
+});
+
 // admins (เพิ่มได้จากหน้าแอดมิน หรือใส่ใน ADMIN_USER_IDS)
 on('GET', '/api/admin/admins', 'admin', async ({ env }) => {
   const { results } = await env.DB.prepare('SELECT a.line_user_id, a.name, u.display_name, u.picture_url FROM admins a LEFT JOIN users u ON u.line_user_id = a.line_user_id').all();

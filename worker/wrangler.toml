@@ -14,8 +14,8 @@ database_id = "ad0cfe80-86d0-406b-b2fe-c5ff06d7bcd0"
 crons = ["*/10 * * * *"]
 
 [vars]
-LIFF_ID = "REPLACE_WITH_LIFF_ID"
-LINE_LOGIN_CHANNEL_ID = "REPLACE_WITH_LINE_LOGIN_CHANNEL_ID"
+LIFF_ID = "2012646909-vMsNI4wU"
+LINE_LOGIN_CHANNEL_ID = "2012646909"
 # LINE userId ของแอดมิน 2 คน คั่นด้วย , (ดูได้ที่หน้า admin.html ตอนยังไม่มีสิทธิ์)
 ADMIN_USER_IDS = ""
 # ใส่คำในชื่อบัญชีผู้รับ เพื่อเช็คว่าโอนเข้าบัญชีร้านจริง (ไม่บังคับ) เช่น "ชญาน"

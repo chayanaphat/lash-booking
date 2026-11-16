@@ -451,6 +451,13 @@ async function settings() {
     <button class="btn mt" id="save">บันทึกการตั้งค่า</button>
 
     <div class="card mt2">
+      <b>Rich menu ของ LINE OA</b>
+      <img src="assets/richmenu.jpg" style="border-radius:10px;margin-top:10px" alt="">
+      <div class="tiny muted mt">กดเพื่อตั้งเมนู จองคิว / โปรโมชั่น / แต้มสะสม เป็นเมนูหลักของ OA (แทนเมนูเดิม)</div>
+      <button class="btn ghost mt" id="richmenu">ติดตั้ง Rich menu</button>
+    </div>
+
+    <div class="card mt2">
       <b>แอดมิน</b>
       ${adm.env_admins.map((id) => `<div class="small mt"><span class="code">${esc(id)}</span> <span class="tag">ตั้งใน worker</span></div>`).join('')}
       ${adm.admins.map((a) => `<div class="row between mt"><div class="small">${esc(a.name || a.display_name || '')} <span class="code">${esc(a.line_user_id)}</span></div>
@@ -470,6 +477,18 @@ async function settings() {
       toast('บันทึกแล้ว');
     } catch (e) {
       toast(errText(e));
+    }
+  };
+  $view().querySelector('#richmenu').onclick = async (e) => {
+    if (!confirm('ตั้ง Rich menu นี้เป็นเมนูหลักของ LINE OA?')) return;
+    e.target.disabled = true;
+    try {
+      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg', location.href).href } });
+      toast('ติดตั้ง Rich menu แล้ว ✅ เปิดแชท OA เพื่อดู');
+    } catch (err) {
+      toast(err.message === 'line_token_missing' ? 'ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Cloudflare' : errText(err) + ' ' + (err.data?.detail || ''), 5000);
+    } finally {
+      e.target.disabled = false;
     }
   };
   $view().querySelector('#addadm').onclick = async () => {
