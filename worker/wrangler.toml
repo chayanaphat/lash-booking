@@ -1,0 +1,29 @@
+name = "lash-booking-api"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+# สร้างด้วย: npx wrangler d1 create lash-booking  แล้วนำ database_id มาใส่
+[[d1_databases]]
+binding = "DB"
+database_name = "lash-booking"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+# ยกเลิกคิวที่ไม่โอนมัดจำภายในเวลาที่กำหนด (ทุก 10 นาที)
+[triggers]
+crons = ["*/10 * * * *"]
+
+[vars]
+LIFF_ID = "REPLACE_WITH_LIFF_ID"
+LINE_LOGIN_CHANNEL_ID = "REPLACE_WITH_LINE_LOGIN_CHANNEL_ID"
+# LINE userId ของแอดมิน 2 คน คั่นด้วย , (ดูได้ที่หน้า admin.html ตอนยังไม่มีสิทธิ์)
+ADMIN_USER_IDS = ""
+# ใส่คำในชื่อบัญชีผู้รับ เพื่อเช็คว่าโอนเข้าบัญชีร้านจริง (ไม่บังคับ) เช่น "ชญาน"
+SLIP_RECEIVER_KEYWORD = ""
+# ห้ามเปิดบน production — ใช้ทดสอบ local เท่านั้น
+DEV_AUTH = "0"
+
+# Secrets (ตั้งด้วย npx wrangler secret put <NAME>):
+#   LINE_CHANNEL_ACCESS_TOKEN   (Messaging API channel)
+#   LINE_CHANNEL_SECRET         (Messaging API channel)
+#   EASYSLIP_API_KEY            (ไม่บังคับ — ถ้าไม่ใส่ แอดมินกดยืนยันสลิปเอง)

@@ -1,0 +1,4 @@
+# คัดลอกเป็น .dev.vars สำหรับรัน local (ไฟล์นี้ไม่ถูก commit)
+LINE_CHANNEL_ACCESS_TOKEN=
+LINE_CHANNEL_SECRET=
+EASYSLIP_API_KEY=

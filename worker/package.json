@@ -1,0 +1,16 @@
+{
+  "name": "lash-booking-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --var DEV_AUTH:1",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute lash-booking --remote --file=schema.sql",
+    "db:init:local": "wrangler d1 execute lash-booking --local --file=schema.sql",
+    "test": "node --test test/*.test.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
