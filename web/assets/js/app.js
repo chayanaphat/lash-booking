@@ -1,8 +1,8 @@
 import {
   STATUS, addDays, api, baht, bkkTime, dayName, errText, esc, imgUrl, initLiff, loadImage, monthShort,
   profile, promoRange, promoText, readSlipQR, thaiDate, toast, weekday,
-} from './core.js?v=1794863268';
-import { promptPayPayload } from './promptpay.js?v=1794863268';
+} from './core.js?v=1794863847';
+import { promptPayPayload } from './promptpay.js?v=1794863847';
 
 const $app = document.getElementById('app');
 const $bar = document.getElementById('bar');
@@ -75,14 +75,11 @@ function viewHome() {
 
   $app.innerHTML = `
     <section class="hero">
-      <div class="row">
-        <img class="logo" src="assets/logo.jpg" alt="${esc(settings.shop_name)}">
-        <div class="grow">
-          <h1 class="brand">${esc(settings.shop_name)}</h1>
-          <div class="small muted">สวัสดีค่ะ คุณ${esc(u.display_name || profile?.displayName || '')}</div>
-        </div>
+      <div class="row between" style="align-items:flex-start">
+        <h1 class="wordmark"><img src="assets/logo-wordmark.png" alt="${esc(settings.shop_name)}"></h1>
         ${profile?.pictureUrl ? `<img class="avatar" src="${esc(profile.pictureUrl)}" alt="">` : ''}
       </div>
+      <div class="small muted" style="margin-top:6px">สวัสดีค่ะ คุณ${esc(u.display_name || profile?.displayName || '')} 💜</div>
       <div class="row mt wrapflex">
         <button class="chip-btn" data-go="#/my">💗 แต้มสะสม ${u.stamps}/${req}</button>
         <button class="chip-btn" data-go="#/my">📅 คิวของฉัน</button>
