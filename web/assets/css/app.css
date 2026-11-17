@@ -202,3 +202,30 @@ dialog .df .btn { width: auto; flex: 1; white-space: nowrap; }
 .chips { display: flex; gap: 6px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; }
 .chips::-webkit-scrollbar { display: none; }
 .chips .chip-btn { flex: 0 0 auto; padding: 5px 11px; font-size: 12.5px; }
+
+/* iOS Safari: date/time inputs keep an intrinsic width and overflow grid cells */
+input[type="date"].input,
+input[type="time"].input {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+  line-height: 1.2;
+  text-align: left;
+  background: #fff;
+}
+input[type="date"].input::-webkit-date-and-time-value,
+input[type="time"].input::-webkit-date-and-time-value {
+  text-align: left;
+  margin: 0;
+}
+.grid2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.hours-row { grid-template-columns: 48px minmax(0, 1fr) minmax(0, 1fr) auto; gap: 6px; }
+.hours-row .input { padding: 10px 8px; }
+.hours-row b { font-size: 13px; }
+.row > .input, .row > select.input { min-width: 0; flex: 1 1 0; }
+
+.hours-row select.input { padding: 10px 6px; -webkit-appearance: none; appearance: none; text-align: center; background: #fff; }

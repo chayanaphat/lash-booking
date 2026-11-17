@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1794864304';
+} from './core.js?v=1794891458';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -338,6 +338,16 @@ function promoForm(p) {
 }
 
 // =================================================================== hours
+function timeOptions(selected) {
+  const out = [];
+  for (let m = 5 * 60; m <= 24 * 60 - 30; m += 30) {
+    const t = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+    out.push(t);
+  }
+  if (selected && !out.includes(selected)) out.push(selected), out.sort();
+  return out.map((t) => `<option value="${t}" ${t === selected ? 'selected' : ''}>${t} น.</option>`).join('');
+}
+
 async function hours() {
   const { hours } = await api('/api/public/info');
   const order = [1, 2, 3, 4, 5, 6, 0];
@@ -347,8 +357,8 @@ async function hours() {
         const h = hours.find((x) => x.weekday === w) || { weekday: w, open_time: '10:00', close_time: '20:00', closed: false };
         return `<div class="hours-row" data-w="${w}">
           <b>${dayName(w, true).slice(0, 6)}</b>
-          <input class="input" type="time" data-o value="${h.open_time}" step="1800">
-          <input class="input" type="time" data-c value="${h.close_time}" step="1800">
+          <select class="input" data-o>${timeOptions(h.open_time)}</select>
+          <select class="input" data-c>${timeOptions(h.close_time)}</select>
           <label class="switch"><input type="checkbox" data-closed ${h.closed ? 'checked' : ''}>ปิด</label></div>`;
       }).join('')}
       <p class="tiny muted">เวลาปิด = เวลาที่ต้องทำเสร็จ เช่น ปิด 20:00 ทรง 2 ชม. จองได้ถึง 18:00</p>
