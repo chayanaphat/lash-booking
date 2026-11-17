@@ -7,10 +7,11 @@ import { addDays, fromMin, toMin, weekdayOf } from './util.js';
  * @param hours     array of {weekday, open_time, close_time, closed}
  * @param holidays  Set of YYYY-MM-DD
  * @param busy      array of {start_time, end_time} blocking bookings that day
+ * @param blocks    array of {start_time, end_time} admin time blocks (close the shop for that range)
  * @param settings  {slot_step_min, capacity, booking_days_ahead, min_lead_min}
  * @param now       {date, time} in shop timezone
  */
-export function computeSlots({ date, duration, hours, holidays, busy, settings, now }) {
+export function computeSlots({ date, duration, hours, holidays, busy, blocks = [], settings, now }) {
   const out = { date, closed: false, reason: null, open_time: null, close_time: null, slots: [] };
   if (date < now.date) return { ...out, closed: true, reason: 'past' };
   if (date > addDays(now.date, settings.booking_days_ahead)) return { ...out, closed: true, reason: 'too_far' };
@@ -30,7 +31,8 @@ export function computeSlots({ date, duration, hours, holidays, busy, settings, 
     if (t < minStart) continue;
     const end = t + duration;
     const overlap = busy.filter((b) => toMin(b.start_time) < end && toMin(b.end_time) > t).length;
-    out.slots.push({ time: fromMin(t), end: fromMin(end), available: overlap < capacity });
+    const blocked = blocks.some((b) => toMin(b.start_time) < end && toMin(b.end_time) > t);
+    out.slots.push({ time: fromMin(t), end: fromMin(end), available: !blocked && overlap < capacity });
   }
   return out;
 }

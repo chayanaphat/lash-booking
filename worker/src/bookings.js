@@ -1,6 +1,6 @@
 // Booking service — shared by REST API, LINE webhook and cron
 import {
-  BLOCKING_SQL, busyForDate, notifyAdminIds, getBookingByCode, getHolidays, getHours, getPromotions,
+  BLOCKING_SQL, busyForDate, getBlocks, notifyAdminIds, getBookingByCode, getHolidays, getHours, getPromotions,
   getSettings, getStyles, parseBooking, saveImage, styleMap,
 } from './db.js';
 import { push, multicast } from './line.js';
@@ -18,16 +18,23 @@ export async function buildQuote(env, { date, style_ids, use_reward = false }, s
   const [styles, promos] = await Promise.all([getStyles(env, { activeOnly: true }), getPromotions(env)]);
   const map = styleMap(styles);
   for (const id of ids) if (!map[id]) throw new HttpError(400, 'style_not_found');
-  if (ids.filter((id) => map[id].kind !== 'addon').length > settings.max_people) throw new HttpError(400, 'too_many_people');
+  const people = ids.filter((id) => map[id].kind !== 'addon').length;
+  if (people > settings.max_people) throw new HttpError(400, 'too_many_people');
+  // บริการเสริมแต่ละอย่าง เลือกได้ไม่เกินจำนวนคน (คนละ 1)
+  const counts = {};
+  for (const id of ids) if (map[id].kind === 'addon') counts[id] = (counts[id] || 0) + 1;
+  if (Object.values(counts).some((n) => n > Math.max(1, people))) throw new HttpError(400, 'too_many_addons');
   const q = quote(map, ids, promos, date, { useReward: use_reward });
   q.deposit_amount = Math.min(settings.deposit_amount, q.total);
   return q;
 }
 
 export async function slotsFor(env, date, duration, settings, excludeCode = null) {
-  const [hours, holidays, busy] = await Promise.all([getHours(env), getHolidays(env, date), busyForDate(env, date, excludeCode)]);
+  const [hours, holidays, busy, blocks] = await Promise.all([
+    getHours(env), getHolidays(env, date), busyForDate(env, date, excludeCode), getBlocks(env, date, date),
+  ]);
   return computeSlots({
-    date, duration, hours, busy, settings, now: bkkNow(),
+    date, duration, hours, busy, blocks, settings, now: bkkNow(),
     holidays: new Set(holidays.map((h) => h.date)),
   });
 }

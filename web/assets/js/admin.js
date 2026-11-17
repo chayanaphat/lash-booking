@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1794897574';
+} from './core.js?v=1794925398';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -9,7 +9,7 @@ const TABS = [
   ['styles', '👁️ ทรงขนตา'],
   ['promos', '🎀 โปรโมชั่น'],
   ['hours', '🕘 เวลาเปิด-ปิด'],
-  ['holidays', '🏖️ วันหยุด'],
+  ['holidays', '🏖️ วันหยุด/ปิดช่วง'],
   ['users', '💗 ลูกค้า/แต้ม'],
   ['settings', '⚙️ ตั้งค่า'],
 ];
@@ -101,10 +101,18 @@ async function bookings() {
   else if (st.range === 'date') q = `?from=${st.from}&to=${st.from}`;
   else q = `?from=${ranges[st.range][0]}&to=${ranges[st.range][1]}`;
   if (st.status && st.range !== 'verifying') q += `&status=${st.status}`;
-  const { bookings: list } = await api('/api/admin/bookings' + q);
+  const [from, to] = st.range === 'date' ? [st.from, st.from] : ranges[st.range] || [null, null];
+  const [{ bookings: list }, blockRes] = await Promise.all([
+    api('/api/admin/bookings' + q),
+    from ? api(`/api/admin/blocks?from=${from}&to=${to}`).catch(() => ({ blocks: [] })) : { blocks: [] },
+  ]);
+  const blocks = st.status ? [] : blockRes.blocks;
 
   const groups = {};
   for (const b of list) (groups[b.date] ||= []).push(b);
+  const blocksBy = {};
+  for (const b of blocks) (blocksBy[b.date] ||= []).push(b), (groups[b.date] ||= []);
+  const days = Object.keys(groups).sort();
   const chip = (k, l) => `<button class="tab ${st.range === k ? 'on' : ''}" data-range="${k}">${l}</button>`;
 
   $view().innerHTML = `
@@ -118,9 +126,10 @@ async function bookings() {
         ${Object.entries(STATUS).map(([k, v]) => `<option value="${k}" ${st.status === k ? 'selected' : ''}>${v}</option>`).join('')}
       </select>
     </div>
-    ${list.length ? Object.entries(groups).map(([d, arr]) => `
-      <div class="daygroup">${thaiDate(d)} · ${arr.filter((b) => b.status !== 'cancelled').length} คิว</div>
-      ${arr.map(bookingCard).join('')}`).join('') : '<div class="empty">ไม่มีคิว</div>'}
+    ${days.length ? days.map((d) => `
+      <div class="daygroup">${thaiDate(d)} · ${groups[d].filter((b) => b.status !== 'cancelled').length} คิว</div>
+      ${(blocksBy[d] || []).map((b) => `<div class="card small" style="border-left:4px solid var(--gold)">⛔ ปิดรับคิว ${b.start_time}–${b.end_time} น.${b.note ? ` · ${esc(b.note)}` : ''}</div>`).join('')}
+      ${groups[d].map(bookingCard).join('')}`).join('') : '<div class="empty">ไม่มีคิว</div>'}
   `;
   $view().querySelectorAll('[data-range]').forEach((b) => (b.onclick = () => ((st.range = b.dataset.range), show())));
   $view().querySelector('#pick').onchange = (e) => {
@@ -377,21 +386,57 @@ async function hours() {
   };
 }
 
-// =================================================================== holidays
+// =================================================================== holidays & time blocks
 async function holidays() {
-  const { holidays: list } = await api('/api/admin/holidays');
+  const [{ holidays: list }, { blocks }] = await Promise.all([api('/api/admin/holidays'), api('/api/admin/blocks')]);
   $view().innerHTML = `
     <div class="card">
+      <b>⛔ ปิดรับคิวบางช่วงเวลา</b>
+      <div class="small muted">เช่น ไปทำธุระ หรือรับลูกค้าที่จองผ่าน Facebook / โทร — ช่วงนี้ลูกค้าจะจองผ่าน LINE ไม่ได้</div>
+      <div class="field mt"><label class="f">วันที่</label><input class="input" type="date" id="bd" min="${bkkToday()}" value="${bkkToday()}"></div>
       <div class="grid2">
-        <div><label class="f">ตั้งแต่วันที่</label><input class="input" type="date" id="d1" min="${bkkToday()}"></div>
-        <div><label class="f">ถึงวันที่ (ถ้าหยุดหลายวัน)</label><input class="input" type="date" id="d2"></div>
+        <div class="field"><label class="f">ตั้งแต่</label><select class="input" id="bs">${timeOptions('13:00')}</select></div>
+        <div class="field"><label class="f">ถึง</label><select class="input" id="be">${timeOptions('15:00')}</select></div>
       </div>
-      <label class="f">หมายเหตุ</label><input class="input" id="note" placeholder="เช่น หยุดสงกรานต์">
+      <div class="field"><label class="f">หมายเหตุ (เห็นเฉพาะแอดมิน)</label><input class="input" id="bn" maxlength="100" placeholder="เช่น ไปธุระ / ลูกค้า FB: คุณเอ ต่อขนตา"></div>
+      <button class="btn mt" id="addblock">+ ปิดช่วงเวลานี้</button>
+    </div>
+    <div class="mt">${blocks.map((b) => `
+      <div class="card row between"><div><b>${thaiDate(b.date)}</b> · ${b.start_time}–${b.end_time} น.
+        ${b.note ? `<div class="small muted">${esc(b.note)}</div>` : ''}</div>
+      <button class="btn sm outline" data-delblock="${b.id}">ลบ</button></div>`).join('') || '<div class="empty">ยังไม่มีช่วงที่ปิดไว้</div>'}</div>
+
+    <div class="card mt2">
+      <b>🏖️ วันหยุดทั้งวัน</b>
+      <div class="grid2 mt">
+        <div class="field"><label class="f">ตั้งแต่วันที่</label><input class="input" type="date" id="d1" min="${bkkToday()}"></div>
+        <div class="field"><label class="f">ถึงวันที่ (ถ้าหยุดหลายวัน)</label><input class="input" type="date" id="d2"></div>
+      </div>
+      <div class="field"><label class="f">หมายเหตุ</label><input class="input" id="note" placeholder="เช่น หยุดสงกรานต์"></div>
       <button class="btn mt" id="add">+ เพิ่มวันหยุด</button>
     </div>
     <div class="mt">${list.map((h) => `
       <div class="card row between"><div><b>${thaiDate(h.date)}</b> <span class="small muted">${esc(h.note)}</span></div>
       <button class="btn sm outline" data-del="${h.date}">ลบ</button></div>`).join('') || '<div class="empty">ยังไม่มีวันหยุดพิเศษ</div>'}</div>`;
+  $view().querySelector('#addblock').onclick = async (e) => {
+    const body = { date: val($view(), '#bd'), start_time: val($view(), '#bs'), end_time: val($view(), '#be'), note: val($view(), '#bn') };
+    if (!body.date) return toast('เลือกวันที่');
+    if (body.start_time >= body.end_time) return toast('เวลาเริ่มต้องน้อยกว่าเวลาสิ้นสุด');
+    e.target.disabled = true;
+    try {
+      await api('/api/admin/blocks', { method: 'POST', body });
+      toast('ปิดช่วงเวลาแล้ว ✅');
+      show();
+    } catch (err) {
+      toast(errText(err));
+      e.target.disabled = false;
+    }
+  };
+  $view().querySelectorAll('[data-delblock]').forEach((b) => (b.onclick = async () => {
+    if (!confirm('เปิดรับคิวช่วงนี้อีกครั้ง?')) return;
+    await api('/api/admin/blocks/' + b.dataset.delblock, { method: 'DELETE' });
+    show();
+  }));
   $view().querySelector('#add').onclick = async () => {
     const date = val($view(), '#d1');
     if (!date) return toast('เลือกวันที่');

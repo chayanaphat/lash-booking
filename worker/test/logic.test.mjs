@@ -81,3 +81,15 @@ test('บริการเสริมไม่นับเป็นคน แ�
   const q3 = quote(st, [1, 9], [], '2026-12-01', { useReward: true });
   assert.deepEqual(q3.items.map((i) => i.price), [0, 150]);
 });
+
+test('slots: แอดมินปิดช่วงเวลา (ไปธุระ / ลูกค้า FB) จองทับไม่ได้ แม้ capacity > 1', () => {
+  const r = computeSlots({
+    date: '2026-11-19', duration: 120, hours, holidays: new Set(), busy: [],
+    blocks: [{ start_time: '13:00', end_time: '14:00' }], settings: { ...settings, capacity: 2 }, now,
+  });
+  const map = Object.fromEntries(r.slots.map((s) => [s.time, s.available]));
+  assert.equal(map['11:00'], true);
+  assert.equal(map['12:00'], false);
+  assert.equal(map['13:00'], false);
+  assert.equal(map['14:00'], true);
+});

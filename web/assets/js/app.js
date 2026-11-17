@@ -1,8 +1,8 @@
 import {
   STATUS, addDays, api, baht, bkkTime, dayName, errText, esc, imgUrl, initLiff, loadImage, monthShort,
   profile, promoRange, promoText, readSlipQR, thaiDate, toast, weekday,
-} from './core.js?v=1794897574';
-import { promptPayPayload } from './promptpay.js?v=1794897574';
+} from './core.js?v=1794925398';
+import { promptPayPayload } from './promptpay.js?v=1794925398';
 
 const $app = document.getElementById('app');
 const $bar = document.getElementById('bar');
@@ -56,6 +56,12 @@ const go = (h) => (location.hash = h);
 const styleById = (id) => state.info.styles.find((s) => s.id === Number(id));
 const isAddon = (id) => styleById(id)?.kind === 'addon';
 const peopleCount = () => state.cart.filter((id) => !isAddon(id)).length;
+// บริการเสริมแต่ละอย่างมีได้ไม่เกินจำนวนคน (คนละ 1) — ตัดส่วนเกินออกเมื่อลบคน
+function trimAddons() {
+  const max = Math.max(1, peopleCount());
+  const seen = {};
+  state.cart = state.cart.filter((id) => !isAddon(id) || (seen[id] = (seen[id] || 0) + 1) <= max);
+}
 /** 'คนที่ 1', 'คนที่ 2', '+ เสริม' */
 const itemLabels = (items) => {
   let n = 0;
@@ -109,6 +115,8 @@ function viewHome() {
     b.addEventListener('click', () => {
       const id = Number(b.dataset.add);
       if (!isAddon(id) && peopleCount() >= settings.max_people) return toast(`เลือกได้สูงสุด ${settings.max_people} คน`);
+      if (isAddon(id) && state.cart.filter((x) => x === id).length >= Math.max(1, peopleCount()))
+        return toast(peopleCount() > 1 ? `บริการเสริมนี้เลือกได้คนละ 1 ครั้ง (${peopleCount()} คน)` : 'บริการเสริมนี้เลือกได้ 1 ครั้งต่อคน — ถ้ามากับเพื่อน เลือกบริการให้เพื่อนก่อน');
       state.cart.push(id);
       state.time = null;
       viewHome();
@@ -174,6 +182,7 @@ function renderCartBar() {
   $bar.querySelectorAll('[data-rm]').forEach((b) =>
     b.addEventListener('click', () => {
       state.cart.splice(Number(b.dataset.rm), 1);
+      trimAddons();
       state.time = null;
       viewHome();
     }),

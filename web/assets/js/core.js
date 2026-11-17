@@ -113,6 +113,9 @@ export const ERR = {
   image_too_large: 'รูปใหญ่เกินไป',
   forbidden: 'ไม่มีสิทธิ์เข้าถึง',
   booking_not_awaiting_deposit: 'การจองนี้ไม่อยู่ในสถานะรอชำระมัดจำ',
+  too_many_people: 'เลือกจำนวนคนเกินที่ร้านรับได้',
+  too_many_addons: 'บริการเสริมเลือกได้คนละ 1 ครั้ง',
+  invalid_time_range: 'เวลาเริ่มต้องน้อยกว่าเวลาสิ้นสุด',
 };
 export const errText = (e) => ERR[e?.message] || 'เกิดข้อผิดพลาด (' + (e?.message || 'unknown') + ')';
 

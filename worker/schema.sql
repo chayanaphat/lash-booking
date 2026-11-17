@@ -135,3 +135,14 @@ WHERE (SELECT COUNT(*) FROM promotions) = 1;
 -- ALTER TABLE styles ADD COLUMN category TEXT NOT NULL DEFAULT 'ต่อขนตา (เลือกทรง)';
 -- ALTER TABLE styles ADD COLUMN kind TEXT NOT NULL DEFAULT 'main';
 -- ALTER TABLE bookings ADD COLUMN reminded_at TEXT;
+
+-- ปิดรับคิวบางช่วงในวัน (ไปธุระ / ลูกค้าจองผ่าน FB) — worker สร้างให้อัตโนมัติถ้ายังไม่มี
+CREATE TABLE IF NOT EXISTS time_blocks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT NOT NULL,
+  start_time TEXT NOT NULL,
+  end_time TEXT NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_blocks_date ON time_blocks(date);

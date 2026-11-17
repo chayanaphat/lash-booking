@@ -17,7 +17,7 @@ export const DEFAULT_SETTINGS = {
   capacity: 1, // จำนวนช่าง/คิวที่ทำพร้อมกันได้
   booking_days_ahead: 30,
   min_lead_min: 120, // ต้องจองล่วงหน้าอย่างน้อยกี่นาที
-  deposit_timeout_min: 30, // ถือคิวรอโอนมัดจำกี่นาที
+  deposit_timeout_min: 10, // ถือคิวรอโอนมัดจำกี่นาที
   max_people: 4,
   stamps_required: 10,
   notify_admins: 1, // push แจ้งแอดมินเมื่อมีคิวใหม่/รอตรวจสลิป (ใช้โควต้าข้อความ)
@@ -88,6 +88,30 @@ export async function getHours(env) {
   const { results } = await env.DB.prepare('SELECT * FROM business_hours ORDER BY weekday').all();
   return results.map((h) => ({ ...h, closed: !!h.closed }));
 }
+// ---------- time blocks (ปิดรับคิวบางช่วงเวลา เช่น ไปธุระ / ลูกค้าจองผ่าน FB) ----------
+let blocksReady = false;
+export async function ensureBlocks(env) {
+  if (blocksReady) return;
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS time_blocks (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       date TEXT NOT NULL,
+       start_time TEXT NOT NULL,
+       end_time TEXT NOT NULL,
+       note TEXT NOT NULL DEFAULT '',
+       created_at TEXT NOT NULL DEFAULT (datetime('now'))
+     )`,
+  ).run();
+  blocksReady = true;
+}
+export async function getBlocks(env, from, to) {
+  await ensureBlocks(env);
+  const { results } = await env.DB.prepare(
+    'SELECT * FROM time_blocks WHERE date >= ? AND date <= ? ORDER BY date, start_time',
+  ).bind(from, to || '9999-12-31').all();
+  return results;
+}
+
 export async function getHolidays(env, fromDate) {
   const { results } = await env.DB.prepare('SELECT * FROM holidays WHERE date >= ? ORDER BY date').bind(fromDate || '0000').all();
   return results;

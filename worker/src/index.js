@@ -1,6 +1,6 @@
 // Lash booking API — Cloudflare Worker
 import {
-  PUBLIC_SETTING_KEYS, adminIds, envAdminIds, notifyAdminIds, getBookingByCode, getHolidays, getHours, getImage, getPromotions,
+  PUBLIC_SETTING_KEYS, adminIds, envAdminIds, ensureBlocks, getBlocks, notifyAdminIds, getBookingByCode, getHolidays, getHours, getImage, getPromotions,
   getSettings, getStyles, isAdmin, parseBooking, parsePromo, saveImage, saveSettings, upsertUser,
 } from './db.js';
 import { buildQuote, cancelOwn, changeStatus, createBooking, expirePending, processSlip, sendReminders, slotsFor } from './bookings.js';
@@ -279,6 +279,27 @@ on('POST', '/api/admin/holidays', 'admin', async ({ env, req }) => {
 });
 on('DELETE', '/api/admin/holidays/:date', 'admin', async ({ env, params }) => {
   await env.DB.prepare('DELETE FROM holidays WHERE date = ?').bind(params.date).run();
+  return json({ ok: true });
+});
+
+// time blocks: ปิดรับคิวบางช่วงในวัน (ไปธุระ / ลูกค้าจองผ่านช่องทางอื่น)
+on('GET', '/api/admin/blocks', 'admin', async ({ env, url }) => {
+  const from = isDate(url.searchParams.get('from')) ? url.searchParams.get('from') : bkkNow().date;
+  const to = isDate(url.searchParams.get('to')) ? url.searchParams.get('to') : addDays(from, 90);
+  return json({ blocks: await getBlocks(env, from, to) });
+});
+on('POST', '/api/admin/blocks', 'admin', async ({ env, req }) => {
+  const b = await readJson(req);
+  if (!isDate(b.date)) throw new HttpError(400, 'invalid_date');
+  if (!isTime(b.start_time) || !isTime(b.end_time) || b.start_time >= b.end_time) throw new HttpError(400, 'invalid_time_range');
+  await ensureBlocks(env);
+  const r = await env.DB.prepare('INSERT INTO time_blocks (date, start_time, end_time, note) VALUES (?,?,?,?)')
+    .bind(b.date, b.start_time, b.end_time, str(b.note, 100)).run();
+  return json({ id: r.meta?.last_row_id }, 201);
+});
+on('DELETE', '/api/admin/blocks/:id', 'admin', async ({ env, params }) => {
+  await ensureBlocks(env);
+  await env.DB.prepare('DELETE FROM time_blocks WHERE id = ?').bind(int(params.id)).run();
   return json({ ok: true });
 });
 
