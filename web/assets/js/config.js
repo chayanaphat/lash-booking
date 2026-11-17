@@ -4,6 +4,8 @@ export const CONFIG = {
   LIFF_ID: '2012646909-vMsNI4wU',
   // URL ของ Cloudflare Worker (ไม่มี / ท้าย)
   API_BASE: 'https://lash-booking-api.k-chayanaphat.workers.dev',
+  // LINE OA ที่ผูกกับ LIFF (ใช้กับปุ่มเพิ่มเพื่อน)
+  OA_ID: '@xkr5690w',
 };
 
 // ทดสอบบนเครื่อง: เปิด http://localhost:5500/?dev=Utest1  (worker ต้องรันด้วย npm run dev)

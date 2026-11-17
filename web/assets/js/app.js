@@ -1,8 +1,9 @@
 import {
   STATUS, addDays, api, baht, bkkTime, dayName, errText, esc, imgUrl, initLiff, loadImage, monthShort,
   profile, promoRange, promoText, readSlipQR, thaiDate, toast, weekday,
-} from './core.js?v=1794931793';
-import { promptPayPayload } from './promptpay.js?v=1794931793';
+} from './core.js?v=1794936931';
+import { CONFIG } from './config.js?v=1794936931';
+import { promptPayPayload } from './promptpay.js?v=1794936931';
 
 const $app = document.getElementById('app');
 const $bar = document.getElementById('bar');
@@ -16,13 +17,14 @@ const state = {
   useReward: false,
   quote: null,
   form: { name: '', phone: '', note: '' },
+  friend: null, // true/false = เป็นเพื่อน LINE OA หรือยัง, null = เช็คไม่ได้
 };
 
 // ------------------------------------------------------------------ boot
 (async function boot() {
   try {
     await initLiff();
-    const [info, me] = await Promise.all([api('/api/public/info'), api('/api/me')]);
+    const [info, me] = await Promise.all([api('/api/public/info'), api('/api/me'), checkFriend()]);
     state.info = info;
     state.me = me;
     state.form.name = me.user.display_name || profile?.displayName || '';
@@ -35,6 +37,10 @@ const state = {
     else if (p === 'my') location.hash = '#/my';
     else if (p === 'promos') location.hash = '#/promos';
     window.addEventListener('hashchange', render);
+    // กลับมาจากหน้าเพิ่มเพื่อน → เช็คใหม่แล้วซ่อนแถบ
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && state.friend === false) checkFriend().then(updateFriendBox);
+    });
     render();
   } catch (e) {
     console.error(e);
@@ -52,6 +58,58 @@ function render() {
   if (view === 'promos') return viewPromos();
   return viewHome();
 }
+// ------------------------------------------------------------------ เพื่อน LINE OA
+// ร้านส่งข้อความยืนยันคิว / แจ้งเตือน / แต้ม ได้เฉพาะลูกค้าที่เป็นเพื่อน OA
+const addFriendUrl = () => 'https://line.me/R/ti/p/' + encodeURIComponent(CONFIG.OA_ID || '');
+
+async function checkFriend() {
+  const qs = new URLSearchParams(location.search);
+  if (qs.has('friend')) return (state.friend = qs.get('friend') !== '0'); // ทดสอบบนเครื่อง: ?friend=0
+  if (!window.liff?.getFriendship) return (state.friend = null);
+  try {
+    state.friend = !!(await liff.getFriendship()).friendFlag;
+  } catch {
+    state.friend = null; // เช็คไม่ได้ ไม่ต้องแสดงอะไร
+  }
+  return state.friend;
+}
+
+function friendBox() {
+  if (state.friend !== false) return '<div id="friendbox"></div>';
+  return `<div id="friendbox" class="friendbox">
+    <div class="fb-ic">💬</div>
+    <div class="grow">
+      <b>เพิ่มเพื่อน LINE ร้านก่อนนะคะ</b>
+      <div class="small">เพื่อรับข้อความยืนยันคิว แจ้งเตือนก่อนวันนัด และแต้มสะสม ถ้ายังไม่เป็นเพื่อน ร้านจะส่งข้อความหาคุณไม่ได้</div>
+      <div class="row mt-s">
+        <button class="btn sm line" id="addfriend">➕ เพิ่มเพื่อน ${esc(CONFIG.OA_ID)}</button>
+        <button class="chip-btn" id="recheck">เพิ่มแล้ว</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function bindFriendBox() {
+  $app.querySelector('#addfriend')?.addEventListener('click', () => {
+    if (window.liff?.isInClient?.()) liff.openWindow({ url: addFriendUrl(), external: false });
+    else window.open(addFriendUrl(), '_blank', 'noopener');
+  });
+  $app.querySelector('#recheck')?.addEventListener('click', async () => {
+    await checkFriend();
+    if (state.friend === false) toast('ยังไม่พบการเพิ่มเพื่อน ลองกดเพิ่มเพื่อนอีกครั้งนะคะ');
+    updateFriendBox();
+  });
+}
+
+function updateFriendBox() {
+  const el = $app.querySelector('#friendbox');
+  if (!el) return;
+  const wasShown = el.classList.contains('friendbox');
+  el.outerHTML = friendBox();
+  bindFriendBox();
+  if (wasShown && state.friend) toast('เป็นเพื่อนกับร้านแล้ว 💜 จะได้รับข้อความยืนยันคิวทาง LINE');
+}
+
 const go = (h) => (location.hash = h);
 const styleById = (id) => state.info.styles.find((s) => s.id === Number(id));
 const isAddon = (id) => styleById(id)?.kind === 'addon';
@@ -84,7 +142,7 @@ function viewHome() {
   $app.innerHTML = `
     <section class="hero">
       <div class="hero-top">
-        <h1 class="wordmark"><img src="assets/logo-wordmark.png?v=1794907353" alt="${esc(settings.shop_name)}"></h1>
+        <h1 class="wordmark"><img src="assets/logo-wordmark.png?v=1794936931" alt="${esc(settings.shop_name)}"></h1>
         <div class="hero-user">
           <div class="tiny muted">สวัสดีค่ะ</div>
           <div class="small hero-name">${esc(u.display_name || profile?.displayName || '')}</div>
@@ -311,6 +369,7 @@ async function viewBook() {
 
   $app.innerHTML = `
     <button class="back" data-go="#/">← กลับไปเลือกทรง</button>
+    ${friendBox()}
     <div class="section-title" style="margin-top:6px">เลือกวัน</div>
     <div class="dates" id="dates">
       ${dates.map((d) => `
@@ -340,6 +399,7 @@ async function viewBook() {
     <div class="mt"><b class="small">เงื่อนไขการจอง</b>${policyList(state.info.settings.policy_text)}</div>
   `;
   bindGo();
+  bindFriendBox();
   $app.querySelectorAll('[data-date]').forEach((b) =>
     b.addEventListener('click', () => {
       state.date = b.dataset.date;
@@ -498,6 +558,7 @@ async function viewPay(code) {
       ${b.deposit_amount ? `<div class="line small"><span class="muted">มัดจำ</span><span>${baht(b.deposit_amount)}</span></div>
       <div class="line small"><span class="muted">ชำระที่ร้าน</span><span>${baht(b.total - b.deposit_amount)}</span></div>` : ''}
     </div>
+    ${b.status !== 'cancelled' ? friendBox() : ''}
 
     ${pending ? `
       <div class="card center mt">
@@ -528,6 +589,7 @@ async function viewPay(code) {
     ${window.liff?.isInClient?.() ? `<button class="btn ghost mt" id="close">ปิดหน้าต่าง</button>` : ''}
   `;
   bindGo();
+  bindFriendBox();
   $app.querySelector('#close')?.addEventListener('click', () => liff.closeWindow());
 
   if (!pending) return;
