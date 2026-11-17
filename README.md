@@ -12,7 +12,7 @@
 
 ## ฟีเจอร์
 
-- **Rich menu** 3 ปุ่ม: จองคิว / โปรโมชั่น / แต้มสะสม & คิวของฉัน (`scripts/richmenu.jpg`)
+- **Rich menu** 3 ปุ่ม: จองคิว / โปรโมชั่น / แต้มสะสม & คิวของฉัน (`web/assets/richmenu.jpg`) ติดตั้งจากหน้าแอดมิน → ⚙️ ตั้งค่า → ติดตั้ง Rich menu
 - **บริการแยกหมวด**: ทรงต่อขนตา (มีรูป), บริการอื่น ๆ (ถอด/เติม/ลิฟติ้ง) และ *บริการเสริม* เช่น ต่อขนตาล่าง ที่เพิ่มคู่บริการหลักได้ (ไม่นับเป็นคน และไม่โดนโปร "ทุกทรง")
 - **จองคิวใน LIFF**: เลือกบริการ → เพิ่มให้เพื่อนได้ (สูงสุด 4 คน) → เลือกวัน/เวลาว่าง (คิดจากเวลาเปิด-ปิด, วันหยุด, คิวที่จองแล้ว, ทรงละ 2 ชม.) → ยืนยัน
 - **ส่งเข้าแชท OA**: หลังจองระบบส่ง *รูปทรงขนตา + วันเวลา + รหัสจอง* เข้าแชท LINE OA (ผ่าน `liff.sendMessages`) แล้วบอทตอบกลับด้วยการ์ดมัดจำ
@@ -37,7 +37,6 @@ lash-booking/
 │   ├── wrangler.toml        ← ★ ใส่ database_id, LIFF_ID, LINE_LOGIN_CHANNEL_ID, ADMIN_USER_IDS
 │   ├── schema.sql
 │   └── src/
-├── scripts/richmenu.mjs     ← สร้าง rich menu
 └── .github/workflows/       ← auto deploy Pages (+ worker ถ้าตั้ง secret)
 ```
 
@@ -112,10 +111,8 @@ cd .. && git commit -am "config" && git push        # Pages deploy อัตโ�
 
 ### 5) Rich menu
 
-```bash
-LINE_CHANNEL_ACCESS_TOKEN=xxx LIFF_ID=2001234567-AbCdEfGh node scripts/richmenu.mjs
-```
-(อยากเปลี่ยนรูป แก้ `scripts/richmenu.jpg` ขนาด 2500×843 แล้วรันใหม่)
+เข้าหน้าแอดมิน → ⚙️ ตั้งค่า → กด **ติดตั้ง Rich menu** (ระบบใช้ token ของ worker สร้างเมนูให้)
+อยากเปลี่ยนรูป แทนที่ `web/assets/richmenu.jpg` (2500×843) แล้ว push จากนั้นกดติดตั้งใหม่
 
 ### 6) ตั้งแอดมิน 2 คน
 

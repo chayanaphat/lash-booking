@@ -2,3 +2,7 @@ node_modules/
 .wrangler/
 .dev.vars
 .DS_Store
+
+# ไฟล์ต้นฉบับ/ไม่ได้ใช้ในระบบ (เก็บไว้ในเครื่องเท่านั้น)
+info/
+scripts/
