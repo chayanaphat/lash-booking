@@ -4,6 +4,10 @@ export const DEFAULT_SETTINGS = {
   shop_name: 'Kingyo Eyelash',
   shop_phone: '',
   shop_address: '',
+  map_url: '', // ลิงก์ Google Maps ของร้าน
+  shop_lat: '', // พิกัด สำหรับส่ง location ในแชท
+  shop_lng: '',
+  review_url: '', // ลิงก์เขียนรีวิว Google
   deposit_amount: 100,
   promptpay_id: '', // เบอร์มือถือ / เลขบัตรประชาชน
   promptpay_name: '', // ชื่อบัญชี (แสดงให้ลูกค้าเห็น)
@@ -26,7 +30,7 @@ const NUMERIC = new Set(
     .map(([k]) => k),
 );
 export const PUBLIC_SETTING_KEYS = [
-  'shop_name', 'shop_phone', 'shop_address', 'deposit_amount', 'promptpay_id', 'promptpay_name', 'bank_name', 'bank_account_no',
+  'shop_name', 'shop_phone', 'shop_address', 'deposit_amount', 'promptpay_id', 'promptpay_name', 'bank_name', 'bank_account_no', 'map_url', 'review_url',
   'booking_days_ahead', 'max_people', 'stamps_required', 'policy_text', 'deposit_timeout_min', 'min_lead_min',
 ];
 

@@ -176,7 +176,7 @@ export async function changeStatus(env, code, action, { note = '', date, time } 
   await env.DB.batch(stmts);
   const updated = await getBookingByCode(env, code);
   if (settings.notify_customer && customerMsg) {
-    await push(env, b.line_user_id, customerMsg === 'confirmed' ? confirmedFlex(env, updated) : customerMsg).catch(console.error);
+    await push(env, b.line_user_id, customerMsg === 'confirmed' ? confirmedFlex(env, updated, settings) : customerMsg).catch(console.error);
   }
   return updated;
 }

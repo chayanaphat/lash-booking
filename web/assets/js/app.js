@@ -1,8 +1,8 @@
 import {
   STATUS, addDays, api, baht, bkkTime, dayName, errText, esc, imgUrl, initLiff, loadImage, monthShort,
   profile, promoRange, promoText, readSlipQR, thaiDate, toast, weekday,
-} from './core.js?v=1794892921';
-import { promptPayPayload } from './promptpay.js?v=1794892921';
+} from './core.js?v=1794893892';
+import { promptPayPayload } from './promptpay.js?v=1794893892';
 
 const $app = document.getElementById('app');
 const $bar = document.getElementById('bar');
@@ -102,7 +102,7 @@ function viewHome() {
       <div class="cat-title">${esc(cat)}</div>
       <div class="styles">${list.map(styleCard).join('')}</div>`).join('')}
     ${styles.length ? '' : '<div class="empty">ยังไม่มีทรงให้เลือก</div>'}
-    ${settings.shop_address || settings.shop_phone ? `<p class="center small muted mt2">${esc(settings.shop_address)}<br>${esc(settings.shop_phone)}</p>` : ''}
+    ${shopCard(settings)}
   `;
   bindGo();
   $app.querySelectorAll('[data-add]').forEach((b) =>
@@ -116,6 +116,19 @@ function viewHome() {
     }),
   );
   renderCartBar();
+}
+
+function shopCard(s) {
+  if (!s.shop_address && !s.map_url && !s.shop_phone) return '';
+  return `
+    <div class="card mt2 shopcard">
+      <b>📍 ที่ตั้งร้าน</b>
+      ${s.shop_address ? `<div class="small muted mt">${esc(s.shop_address)}</div>` : ''}
+      <div class="row mt">
+        ${s.map_url ? `<a class="btn sm" href="${esc(s.map_url)}" target="_blank" rel="noopener">เปิด Google Maps</a>` : ''}
+        ${s.shop_phone ? `<a class="btn sm outline" href="tel:${esc(s.shop_phone.replace(/[^0-9+]/g, ''))}">📞 ${esc(s.shop_phone)}</a>` : ''}
+      </div>
+    </div>`;
 }
 
 function groupByCategory(list) {
@@ -397,7 +410,8 @@ async function viewPay(code) {
       <button class="btn outline mt" id="cancel">ยกเลิกการจองนี้</button>` : ''}
 
     ${b.status === 'verifying' ? `<div class="result wait">🧾 ได้รับสลิปแล้ว แอดมินกำลังตรวจสอบ จะแจ้งผลทาง LINE ค่ะ</div>` : ''}
-    ${b.status === 'confirmed' ? `<div class="result ok">✅ ยืนยันคิวเรียบร้อย แล้วพบกันนะคะ 💕</div>` : ''}
+    ${b.status === 'confirmed' ? `<div class="result ok">✅ ยืนยันคิวเรียบร้อย แล้วพบกันนะคะ 💕</div>${shopCard(s)}` : ''}
+    ${b.status === 'completed' && s.review_url ? `<a class="btn ghost mt" href="${esc(s.review_url)}" target="_blank" rel="noopener">⭐ รีวิวร้านบน Google</a>` : ''}
     ${b.status === 'cancelled' ? `<div class="result bad">คิวนี้ถูกยกเลิก${b.admin_note ? ' — ' + esc(b.admin_note) : ''}</div>` : ''}
     ${window.liff?.isInClient?.() ? `<button class="btn ghost mt" id="close">ปิดหน้าต่าง</button>` : ''}
   `;
@@ -503,6 +517,9 @@ async function viewMy() {
       <div class="small mt" style="opacity:.85">${st >= req ? '🎁 ใช้สิทธิ์ต่อขนตาฟรี 1 ทรง ได้ในการจองครั้งถัดไป!' : `สะสมครบ ${req} ครั้ง รับฟรี 1 ทรง · อีก ${req - st} ครั้ง`}</div>
     </div>
 
+    ${state.info.settings.review_url && bookings.some((b) => b.status === 'completed') ? `
+      <a class="card mt row" href="${esc(state.info.settings.review_url)}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">
+        <span style="font-size:24px">⭐</span><div class="grow"><b>ชอบผลงานไหมคะ?</b><div class="tiny muted">รีวิวร้านบน Google ช่วยร้านได้มากเลย 💜</div></div><span class="muted">›</span></a>` : ''}
     <div class="section-title">คิวที่กำลังจะถึง</div>
     ${upcoming.length ? upcoming.map(card).join('') : `<div class="empty">ยังไม่มีคิว<br><button class="btn sm mt" data-go="#/">จองคิวเลย</button></div>`}
     ${past.length ? `<div class="section-title">ประวัติ</div>${past.map(card).join('')}` : ''}

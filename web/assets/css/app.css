@@ -232,3 +232,6 @@ input[type="time"].input::-webkit-date-and-time-value {
 
 .field { min-width: 0; }
 .card > b:first-child { display: block; margin-bottom: 2px; }
+
+.shopcard .row .btn { flex: 1 1 0; text-align: center; text-decoration: none; }
+a.btn { display: inline-block; text-align: center; text-decoration: none; }

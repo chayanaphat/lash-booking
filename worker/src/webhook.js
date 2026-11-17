@@ -2,7 +2,7 @@
 import { getBookingByCode, getPromotions, getSettings, getStyles, parseBooking, styleMap, upsertUser } from './db.js';
 import { latestPendingFor, processSlip } from './bookings.js';
 import { getMessageContent, reply, verifySignature } from './line.js';
-import { confirmedFlex, depositFlex, liffUrl, text } from './messages.js';
+import { confirmedFlex, depositFlex, liffUrl, locationMessage, text } from './messages.js';
 import { activePromotions, promoText } from './pricing.js';
 import { bkkNow, errorResponse, json, thaiDate } from './util.js';
 
@@ -42,7 +42,7 @@ async function handleEvent(e, env) {
     if (!booking) return; // not a slip – let staff handle the chat
     const img = await getMessageContent(env, e.message.id);
     const r = await processSlip(env, booking, { ...img, payload: null });
-    if (r.status === 'confirmed') return reply(env, e.replyToken, confirmedFlex(env, r.booking));
+    if (r.status === 'confirmed') return reply(env, e.replyToken, confirmedFlex(env, r.booking, await getSettings(env)));
     if (r.status === 'verifying') {
       return reply(env, e.replyToken, text(`ได้รับสลิปแล้วค่ะ 🧾 (รหัส ${booking.code})\nแอดมินจะตรวจสอบและยืนยันคิวให้เร็วที่สุดนะคะ`));
     }
@@ -59,8 +59,15 @@ async function handleEvent(e, env) {
     if (!b || b.line_user_id !== userId) return;
     const s = await getSettings(env);
     if (b.status === 'pending_deposit') return reply(env, e.replyToken, depositFlex(env, b, s));
-    if (b.status === 'confirmed') return reply(env, e.replyToken, confirmedFlex(env, b));
+    if (b.status === 'confirmed') return reply(env, e.replyToken, confirmedFlex(env, b, s));
     return reply(env, e.replyToken, text(`รหัส ${b.code}: ${STATUS_TH[b.status]}`));
+  }
+
+  if (/แผนที่|ที่อยู่|ร้านอยู่|อยู่ตรงไหน|อยู่ไหน|พิกัด|location|map/i.test(msg)) {
+    const s = await getSettings(env);
+    const loc = locationMessage(s);
+    const lines = [`📍 ${s.shop_name}`, s.shop_address, s.shop_phone ? `📞 ${s.shop_phone}` : '', s.map_url ? `Google Maps: ${s.map_url}` : ''].filter(Boolean);
+    return reply(env, e.replyToken, [loc, text(lines.join('\n'))].filter(Boolean));
   }
 
   if (/โปร/.test(msg)) {

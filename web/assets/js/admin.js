@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1794892921';
+} from './core.js?v=1794893892';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -445,7 +445,11 @@ async function settings() {
   $view().innerHTML = `
     <div class="card">
       <b>ข้อมูลร้าน</b>
-      ${f('shop_name', 'ชื่อร้าน')}${f('shop_phone', 'เบอร์ร้าน')}${f('shop_address', 'ที่อยู่ / Google Maps')}
+      ${f('shop_name', 'ชื่อร้าน')}${f('shop_phone', 'เบอร์ร้าน')}${f('shop_address', 'ที่อยู่')}
+      ${f('map_url', 'ลิงก์ Google Maps', 'url', 'ปุ่ม "เปิด Google Maps" ในหน้าจอง และในการ์ดยืนยันคิว')}
+      <div class="grid2">${f('shop_lat', 'ละติจูด')}${f('shop_lng', 'ลองจิจูด')}</div>
+      <div class="tiny muted" style="margin-top:4px">พิกัดใช้ส่งหมุดแผนที่ในแชท เมื่อลูกค้าพิมพ์ "แผนที่" หรือ "ร้านอยู่ไหน"</div>
+      ${f('review_url', 'ลิงก์รีวิว Google', 'url', 'แสดงปุ่มชวนรีวิวให้ลูกค้าที่ใช้บริการแล้ว')}
       <label class="f">เงื่อนไขการจอง (1 บรรทัด = 1 ข้อ)</label><textarea class="input" data-k="policy_text" rows="5">${esc(s.policy_text)}</textarea>
     </div>
     <div class="card">
@@ -473,7 +477,7 @@ async function settings() {
 
     <div class="card mt2">
       <b>Rich menu ของ LINE OA</b>
-      <img src="assets/richmenu.jpg?v=1794892921" style="border-radius:10px;margin-top:10px" alt="">
+      <img src="assets/richmenu.jpg?v=1794893892" style="border-radius:10px;margin-top:10px" alt="">
       <div class="tiny muted mt">กดเพื่อตั้งเมนู จองคิว / โปรโมชั่น / แต้มสะสม เป็นเมนูหลักของ OA (แทนเมนูเดิม)</div>
       <button class="btn ghost mt" id="richmenu">ติดตั้ง Rich menu</button>
     </div>
@@ -504,7 +508,7 @@ async function settings() {
     if (!confirm('ตั้ง Rich menu นี้เป็นเมนูหลักของ LINE OA?')) return;
     e.target.disabled = true;
     try {
-      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1794892921', location.href).href } });
+      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1794893892', location.href).href } });
       toast('ติดตั้ง Rich menu แล้ว ✅ เปิดแชท OA เพื่อดู');
     } catch (err) {
       toast(err.message === 'line_token_missing' ? 'ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Cloudflare' : errText(err) + ' ' + (err.data?.detail || ''), 5000);

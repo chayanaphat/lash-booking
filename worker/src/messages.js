@@ -83,7 +83,18 @@ export function depositFlex(env, b, settings) {
   };
 }
 
-export function confirmedFlex(env, b) {
+export function locationMessage(settings) {
+  if (!settings.shop_lat || !settings.shop_lng) return null;
+  return {
+    type: 'location',
+    title: settings.shop_name || 'ร้าน',
+    address: (settings.shop_address || 'แตะเพื่อเปิดแผนที่').slice(0, 100),
+    latitude: Number(settings.shop_lat),
+    longitude: Number(settings.shop_lng),
+  };
+}
+
+export function confirmedFlex(env, b, settings = {}) {
   return {
     type: 'flex',
     altText: `ยืนยันคิวแล้ว ${thaiDate(b.date)} ${b.start_time} น.`,
@@ -106,7 +117,11 @@ export function confirmedFlex(env, b) {
       },
       footer: {
         type: 'box', layout: 'vertical',
-        contents: [{ type: 'button', style: 'secondary', action: { type: 'uri', label: 'ดูคิวของฉัน', uri: liffUrl(env, { p: 'my' }) } }],
+        spacing: 'sm',
+        contents: [
+          settings.map_url ? { type: 'button', style: 'primary', color: ROSE, action: { type: 'uri', label: '📍 แผนที่ร้าน', uri: settings.map_url } } : null,
+          { type: 'button', style: 'secondary', action: { type: 'uri', label: 'ดูคิวของฉัน', uri: liffUrl(env, { p: 'my' }) } },
+        ].filter(Boolean),
       },
     },
   };
