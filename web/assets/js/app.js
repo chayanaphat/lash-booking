@@ -1,8 +1,8 @@
 import {
   STATUS, addDays, api, baht, bkkTime, dayName, errText, esc, imgUrl, initLiff, loadImage, monthShort,
   profile, promoRange, promoText, readSlipQR, thaiDate, toast, weekday,
-} from './core.js?v=1794927814';
-import { promptPayPayload } from './promptpay.js?v=1794927814';
+} from './core.js?v=1794928901';
+import { promptPayPayload } from './promptpay.js?v=1794928901';
 
 const $app = document.getElementById('app');
 const $bar = document.getElementById('bar');
@@ -96,6 +96,12 @@ function viewHome() {
         ${promotions.length ? `<button class="chip-btn" data-go="#/promos">🎀 โปร</button>` : ''}
         ${state.me.is_admin ? `<a class="chip-btn" href="admin.html${location.search.includes('dev=') ? location.search : ''}" style="text-decoration:none;color:inherit">⚙️ แอดมิน</a>` : ''}
       </div>
+      ${(state.info.reviews || []).length ? `
+        <div class="hl-row" role="list" aria-label="รีวิวและผลงาน">${state.info.reviews.map((a, i) => `
+          <button class="hl" data-story="${i}" role="listitem" aria-label="ดูรีวิว ${esc(a.name)}">
+            <span class="ring"><span class="in"><img src="${imgUrl(a.photos[0].image_id)}" alt="" loading="lazy"></span></span>
+            <span class="nm">${esc(a.name)}</span>
+          </button>`).join('')}</div>` : ''}
     </section>
 
     ${nowPromos.map((p) => `
@@ -112,6 +118,7 @@ function viewHome() {
     ${shopCard(settings)}
   `;
   bindGo();
+  $app.querySelectorAll('[data-story]').forEach((b) => (b.onclick = () => openStory(Number(b.dataset.story))));
   $app.querySelectorAll('[data-add]').forEach((b) =>
     b.addEventListener('click', () => {
       const id = Number(b.dataset.add);
@@ -125,6 +132,95 @@ function viewHome() {
     }),
   );
   renderCartBar();
+}
+
+// ------------------------------------------------------------------ review stories (อัลบั้มไฮไลต์)
+let story = null;
+function openStory(albumIdx, photoIdx = 0) {
+  const albums = state.info.reviews || [];
+  if (!albums[albumIdx]) return;
+  closeStory();
+  const el = document.createElement('div');
+  el.className = 'story';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  document.body.appendChild(el);
+  document.body.style.overflow = 'hidden';
+  story = { el, a: albumIdx, p: photoIdx, timer: null };
+  const onKey = (e) => {
+    if (e.key === 'Escape') closeStory();
+    if (e.key === 'ArrowRight') stepStory(1);
+    if (e.key === 'ArrowLeft') stepStory(-1);
+  };
+  story.onKey = onKey;
+  document.addEventListener('keydown', onKey);
+  renderStory();
+}
+function closeStory() {
+  if (!story) return;
+  clearTimeout(story.timer);
+  document.removeEventListener('keydown', story.onKey);
+  story.el.remove();
+  document.body.style.overflow = '';
+  story = null;
+}
+function stepStory(dir) {
+  const albums = state.info.reviews;
+  let { a, p } = story;
+  p += dir;
+  if (p >= albums[a].photos.length) { a += 1; p = 0; }
+  if (p < 0) { a -= 1; p = a >= 0 ? albums[a].photos.length - 1 : 0; }
+  if (a < 0) { a = 0; p = 0; }
+  if (a >= albums.length) return closeStory();
+  story.a = a;
+  story.p = p;
+  renderStory();
+}
+function renderStory() {
+  const album = state.info.reviews[story.a];
+  const photo = album.photos[story.p];
+  const style = photo.style_id ? styleById(photo.style_id) : null;
+  clearTimeout(story.timer);
+  story.el.innerHTML = `
+    <div class="story-in">
+      <div class="story-bars">${album.photos.map((_, i) => `<span class="${i < story.p ? 'done' : i === story.p ? 'now' : ''}"><i></i></span>`).join('')}</div>
+      <div class="story-head">
+        <span class="ring sm"><span class="in"><img src="${imgUrl(album.photos[0].image_id)}" alt=""></span></span>
+        <div class="grow"><b>${esc(album.name)}</b><div class="tiny" style="opacity:.75">รูป ${story.p + 1} จาก ${album.photos.length}</div></div>
+        <button class="story-x" aria-label="ปิด">✕</button>
+      </div>
+      <div class="story-img">
+        <img src="${imgUrl(photo.image_id)}" alt="${esc(photo.caption || album.name)}">
+        <button class="story-prev" aria-label="รูปก่อนหน้า"></button>
+        <button class="story-next" aria-label="รูปถัดไป"></button>
+      </div>
+      ${photo.caption || style ? `<div class="story-cap">${style ? `<b>${esc(style.name)}</b>` : ''}${photo.caption ? `<div>${esc(photo.caption)}</div>` : ''}</div>` : ''}
+      ${style ? `<button class="btn story-book">จองทรงนี้ · ${baht(style.price)}</button>` : ''}
+    </div>`;
+  const q = (s) => story.el.querySelector(s);
+  q('.story-x').onclick = closeStory;
+  q('.story-prev').onclick = () => stepStory(-1);
+  q('.story-next').onclick = () => stepStory(1);
+  if (style) {
+    q('.story-book').onclick = () => {
+      const id = style.id;
+      closeStory();
+      if (!state.cart.includes(id)) {
+        if (!isAddon(id) && peopleCount() >= state.info.settings.max_people) return toast(`เลือกได้สูงสุด ${state.info.settings.max_people} คน`);
+        state.cart.push(id);
+        state.time = null;
+      }
+      if (location.hash && location.hash !== '#/') location.hash = '#/';
+      else viewHome();
+      toast(`เลือก ${style.name} แล้ว`);
+    };
+  }
+  // เลื่อนอัตโนมัติทุก 5 วินาที (หยุดเมื่อแตะค้าง)
+  const img = q('.story-img');
+  const arm = () => (story.timer = setTimeout(() => story && stepStory(1), 5000));
+  img.onpointerdown = () => (clearTimeout(story.timer), story.el.classList.add('paused'));
+  img.onpointerup = img.onpointercancel = () => (story.el.classList.remove('paused'), arm());
+  arm();
 }
 
 function shopCard(s) {

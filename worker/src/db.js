@@ -124,6 +124,44 @@ export async function getBlocks(env, from, to) {
   return results;
 }
 
+// ---------- reviews: อัลบั้มไฮไลต์ (แสดงแบบสตอรี่ในหน้าจอง) ----------
+let reviewsReady = false;
+export async function ensureReviews(env) {
+  if (reviewsReady) return;
+  await env.DB.batch([
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS review_albums (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      sort INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`),
+    env.DB.prepare(`CREATE TABLE IF NOT EXISTS review_photos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      album_id INTEGER NOT NULL,
+      image_id TEXT NOT NULL,
+      caption TEXT NOT NULL DEFAULT '',
+      style_id INTEGER,
+      sort INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`),
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_review_photos_album ON review_photos(album_id, sort)'),
+  ]);
+  reviewsReady = true;
+}
+/** albums with their photos; publicOnly = only active albums that have photos */
+export async function getReviewAlbums(env, { publicOnly = false } = {}) {
+  await ensureReviews(env);
+  const [{ results: albums }, { results: photos }] = await Promise.all([
+    env.DB.prepare(`SELECT * FROM review_albums ${publicOnly ? 'WHERE active = 1' : ''} ORDER BY sort, id`).all(),
+    env.DB.prepare('SELECT id, album_id, image_id, caption, style_id, sort FROM review_photos ORDER BY sort, id').all(),
+  ]);
+  const by = {};
+  for (const p of photos) (by[p.album_id] ||= []).push(p);
+  const list = albums.map((a) => ({ ...a, active: !!a.active, photos: by[a.id] || [] }));
+  return publicOnly ? list.filter((a) => a.photos.length) : list;
+}
+
 export async function getHolidays(env, fromDate) {
   const { results } = await env.DB.prepare('SELECT * FROM holidays WHERE date >= ? ORDER BY date').bind(fromDate || '0000').all();
   return results;

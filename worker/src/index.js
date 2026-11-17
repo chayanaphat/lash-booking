@@ -1,6 +1,6 @@
 // Lash booking API — Cloudflare Worker
 import {
-  PUBLIC_SETTING_KEYS, adminIds, envAdminIds, ensureBlocks, ensureStyleStamps, getBlocks, notifyAdminIds, getBookingByCode, getHolidays, getHours, getImage, getPromotions,
+  PUBLIC_SETTING_KEYS, adminIds, envAdminIds, ensureBlocks, ensureReviews, ensureStyleStamps, getBlocks, getReviewAlbums, notifyAdminIds, getBookingByCode, getHolidays, getHours, getImage, getPromotions,
   getSettings, getStyles, isAdmin, parseBooking, parsePromo, saveImage, saveSettings, upsertUser,
 } from './db.js';
 import { buildQuote, cancelOwn, changeStatus, createBooking, expirePending, processSlip, sendReminders, slotsFor } from './bookings.js';
@@ -79,8 +79,9 @@ on('GET', '/img/:id', false, async ({ env, params }) => {
 
 on('GET', '/api/public/info', false, async ({ env }) => {
   const today = bkkNow().date;
-  const [settings, styles, promos, hours, holidays] = await Promise.all([
+  const [settings, styles, promos, hours, holidays, reviews] = await Promise.all([
     getSettings(env), getStyles(env, { activeOnly: true }), getPromotions(env), getHours(env), getHolidays(env, today),
+    getReviewAlbums(env, { publicOnly: true }).catch(() => []),
   ]);
   return json({
     today,
@@ -89,6 +90,7 @@ on('GET', '/api/public/info', false, async ({ env }) => {
     promotions: promos.filter((p) => p.active && (!p.end_date || p.end_date >= today)),
     hours,
     holidays,
+    reviews: reviews.map((a) => ({ id: a.id, name: a.name, photos: a.photos.map((p) => ({ image_id: p.image_id, caption: p.caption, style_id: p.style_id })) })),
   });
 });
 
@@ -189,7 +191,7 @@ function styleInput(b) {
     active: b.active === false || b.active === 0 ? 0 : 1,
     category: str(b.category, 60) || 'บริการ',
     kind: b.kind === 'addon' ? 'addon' : 'main',
-    stamps: Math.min(10, Math.max(0, int(b.stamps, 0))),
+    stamps: Math.min(5, Math.max(0, int(b.stamps, 0))),
   };
   if (!s.name || s.price < 0 || s.duration_min < 15) throw new HttpError(400, 'invalid_style');
   return s;
@@ -318,6 +320,73 @@ on('POST', '/api/admin/images', 'admin', async ({ env, req }) => {
   const body = await readJson(req);
   const { mime, bytes } = parseDataUrl(body.image);
   return json({ id: await saveImage(env, bytes, mime, 'style') }, 201);
+});
+
+// reviews (อัลบั้มไฮไลต์)
+on('GET', '/api/admin/reviews', 'admin', async ({ env }) => json({ albums: await getReviewAlbums(env) }));
+on('POST', '/api/admin/review-albums', 'admin', async ({ env, req }) => {
+  const b = await readJson(req);
+  const name = str(b.name, 30);
+  if (!name) throw new HttpError(400, 'name_required');
+  await ensureReviews(env);
+  const max = await env.DB.prepare('SELECT COALESCE(MAX(sort), 0) AS m FROM review_albums').first();
+  const r = await env.DB.prepare('INSERT INTO review_albums (name, sort) VALUES (?, ?)').bind(name, (max?.m || 0) + 1).run();
+  return json({ id: r.meta.last_row_id }, 201);
+});
+on('PUT', '/api/admin/review-albums/:id', 'admin', async ({ env, req, params }) => {
+  const b = await readJson(req);
+  const name = str(b.name, 30);
+  if (!name) throw new HttpError(400, 'name_required');
+  await ensureReviews(env);
+  await env.DB.prepare('UPDATE review_albums SET name = ?, active = ? WHERE id = ?').bind(name, b.active === false ? 0 : 1, int(params.id)).run();
+  return json({ ok: true });
+});
+on('DELETE', '/api/admin/review-albums/:id', 'admin', async ({ env, params }) => {
+  await ensureReviews(env);
+  const id = int(params.id);
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM images WHERE id IN (SELECT image_id FROM review_photos WHERE album_id = ?)').bind(id),
+    env.DB.prepare('DELETE FROM review_photos WHERE album_id = ?').bind(id),
+    env.DB.prepare('DELETE FROM review_albums WHERE id = ?').bind(id),
+  ]);
+  return json({ ok: true });
+});
+on('POST', '/api/admin/review-photos', 'admin', async ({ env, req }) => {
+  const b = await readJson(req);
+  const { mime, bytes } = parseDataUrl(b.image);
+  await ensureReviews(env);
+  const album = await env.DB.prepare('SELECT id FROM review_albums WHERE id = ?').bind(int(b.album_id)).first();
+  if (!album) throw new HttpError(404, 'album_not_found');
+  const imageId = await saveImage(env, bytes, mime, 'review');
+  const max = await env.DB.prepare('SELECT COALESCE(MAX(sort), 0) AS m FROM review_photos WHERE album_id = ?').bind(album.id).first();
+  const r = await env.DB.prepare('INSERT INTO review_photos (album_id, image_id, caption, style_id, sort) VALUES (?,?,?,?,?)')
+    .bind(album.id, imageId, str(b.caption, 120), int(b.style_id, 0) || null, (max?.m || 0) + 1).run();
+  return json({ id: r.meta.last_row_id, image_id: imageId }, 201);
+});
+on('PUT', '/api/admin/review-photos/:id', 'admin', async ({ env, req, params }) => {
+  const b = await readJson(req);
+  await ensureReviews(env);
+  await env.DB.prepare('UPDATE review_photos SET caption = ?, style_id = ? WHERE id = ?')
+    .bind(str(b.caption, 120), int(b.style_id, 0) || null, int(params.id)).run();
+  return json({ ok: true });
+});
+on('POST', '/api/admin/review-photos/reorder', 'admin', async ({ env, req }) => {
+  const b = await readJson(req);
+  const ids = (b.ids || []).map((x) => int(x)).filter(Boolean).slice(0, 200);
+  await ensureReviews(env);
+  if (ids.length) await env.DB.batch(ids.map((id, i) => env.DB.prepare('UPDATE review_photos SET sort = ? WHERE id = ?').bind(i + 1, id)));
+  return json({ ok: true });
+});
+on('DELETE', '/api/admin/review-photos/:id', 'admin', async ({ env, params }) => {
+  await ensureReviews(env);
+  const p = await env.DB.prepare('SELECT image_id FROM review_photos WHERE id = ?').bind(int(params.id)).first();
+  if (p) {
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM review_photos WHERE id = ?').bind(int(params.id)),
+      env.DB.prepare('DELETE FROM images WHERE id = ?').bind(p.image_id),
+    ]);
+  }
+  return json({ ok: true });
 });
 
 // customers / stamps

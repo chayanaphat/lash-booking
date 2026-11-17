@@ -1,12 +1,13 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1794927814';
+} from './core.js?v=1794928901';
 
 const $app = document.getElementById('app');
 const TABS = [
   ['bookings', '📅 คิว'],
   ['styles', '👁️ ทรงขนตา'],
+  ['reviews', '🌟 รีวิว'],
   ['promos', '🎀 โปรโมชั่น'],
   ['hours', '🕘 เวลาเปิด-ปิด'],
   ['holidays', '🏖️ วันหยุด/ปิดช่วง'],
@@ -64,7 +65,7 @@ const $dlg = () => document.getElementById('dlg');
 
 function show() {
   $view().innerHTML = '<div class="loading" style="min-height:30vh"><div class="spinner"></div></div>';
-  const fn = { bookings, styles, promos, hours, holidays, users, settings }[st.tab];
+  const fn = { bookings, styles, reviews, promos, hours, holidays, users, settings }[st.tab];
   fn().catch((e) => ($view().innerHTML = `<div class="empty">${esc(errText(e))}</div>`));
 }
 
@@ -237,7 +238,7 @@ function styleForm(s) {
       <div><label class="f">ใช้เวลา (นาที)</label><input class="input" id="dur" type="number" min="15" step="15" value="${s.duration_min}"></div>
       <div><label class="f">ลำดับการแสดง</label><input class="input" id="sort" type="number" value="${s.sort}"></div>
       <div><label class="f">สถานะ</label><select class="input" id="active"><option value="1">แสดง</option><option value="0" ${s.active ? '' : 'selected'}>ซ่อน</option></select></div>
-      <div><label class="f">แต้มสะสมที่ได้</label><select class="input" id="stamps">${[0, 1, 2, 3].map((n) => `<option value="${n}" ${Number(s.stamps || 0) === n ? 'selected' : ''}>${n ? `💗 +${n} แต้ม` : 'ไม่ได้แต้ม'}</option>`).join('')}</select></div>
+      <div><label class="f">แต้มสะสมที่ได้</label><select class="input" id="stamps">${[0, 1, 2, 3, 4, 5].map((n) => `<option value="${n}" ${Number(s.stamps || 0) === n ? 'selected' : ''}>${n ? `💗 +${n} แต้ม` : 'ไม่ได้แต้ม'}</option>`).join('')}</select></div>
     </div>`, {
     extraFoot: s.id ? '<button class="btn bad" id="del" style="flex:1">ลบ</button>' : '',
     onSave: async (d) => {
@@ -392,6 +393,118 @@ async function hours() {
       toast(e.message === 'invalid_hours' ? 'เวลาเปิดต้องน้อยกว่าเวลาปิด' : errText(e));
     }
   };
+}
+
+// =================================================================== reviews (อัลบั้มไฮไลต์ แสดงแบบสตอรี่ในหน้าจอง)
+async function reviews() {
+  const [{ albums }, { styles: list }] = await Promise.all([api('/api/admin/reviews'), api('/api/admin/styles')]);
+  st.styles = list;
+  if (!albums.find((a) => a.id === st.album)) st.album = albums[0]?.id || null;
+  const cur = albums.find((a) => a.id === st.album);
+  const styleName = (id) => list.find((s) => s.id === id)?.name || '';
+  const cover = (a) => (a.photos[0] ? `<img src="${imgUrl(a.photos[0].image_id)}" alt="">` : '');
+
+  $view().innerHTML = `
+    <div class="row between"><b>อัลบั้มไฮไลต์</b><button class="btn sm ghost" id="newalbum">+ อัลบั้มใหม่</button></div>
+    <div class="small muted mt">ลูกค้าเห็นเป็นวงกลมใต้หัวหน้าจอง แตะแล้วดูรูปแบบสตอรี่ (อัลบั้มที่ยังไม่มีรูปจะไม่แสดง)</div>
+    <div class="hl-row mt">${albums.map((a) => `
+      <button class="hl ${a.id === st.album ? 'on' : ''}" data-album="${a.id}">
+        <span class="ring ${a.active ? '' : 'off'}"><span class="in">${cover(a)}</span></span>
+        <span class="nm">${esc(a.name)}</span><span class="tiny muted">${a.photos.length} รูป${a.active ? '' : ' · ซ่อน'}</span>
+      </button>`).join('') || '<div class="empty" style="padding:12px 0">ยังไม่มีอัลบั้ม กด "+ อัลบั้มใหม่" เช่น ขนตา / คิ้ว & ลิฟติ้ง / แชทรีวิว</div>'}</div>
+    ${cur ? `
+      <div class="card mt">
+        <div class="row between"><b>${esc(cur.name)} · ${cur.photos.length} รูป</b>
+          <div class="row" style="gap:6px"><button class="btn sm outline" id="editalbum">แก้ชื่อ/ซ่อน</button><button class="btn sm outline" id="delalbum">ลบ</button></div></div>
+        <input type="file" accept="image/*" multiple id="files" class="hidden">
+        <button class="btn mt" id="addphotos" style="width:100%">+ เพิ่มรูปในอัลบั้มนี้ (เลือกได้หลายรูป)</button>
+        <div class="tiny muted mt">รูปแคปแชทรีวิว หรือรูปผลงานที่ลูกค้ายินยอมให้ลง · ระบบย่อรูปให้อัตโนมัติ</div>
+        <div class="mt">${cur.photos.map((p, i) => `
+          <div class="rv-item">
+            <img class="rv-thumb" src="${imgUrl(p.image_id)}" alt="">
+            <div class="grow"><b class="small">รูปที่ ${i + 1}</b>
+              <div class="tiny muted">${esc(p.caption || '') || 'ไม่มีคำอธิบาย'}${p.style_id ? ` · ${esc(styleName(p.style_id))}` : ''}</div></div>
+            <div class="rv-acts">
+              <button class="btn sm outline" data-up="${i}" ${i ? '' : 'disabled'} aria-label="เลื่อนขึ้น">↑</button>
+              <button class="btn sm outline" data-down="${i}" ${i < cur.photos.length - 1 ? '' : 'disabled'} aria-label="เลื่อนลง">↓</button>
+              <button class="btn sm outline" data-ph="${p.id}">แก้</button>
+            </div>
+          </div>`).join('') || '<div class="empty" style="padding:14px 0">ยังไม่มีรูป</div>'}</div>
+      </div>` : ''}`;
+
+  $view().querySelectorAll('[data-album]').forEach((b) => (b.onclick = () => ((st.album = Number(b.dataset.album)), show())));
+  $view().querySelector('#newalbum').onclick = () => dialog('อัลบั้มใหม่', `
+    <label class="f">ชื่ออัลบั้ม (สั้น ๆ แสดงใต้วงกลม)</label><input class="input" id="an" maxlength="30" placeholder="เช่น ขนตา / คิ้ว & ลิฟติ้ง / แชทรีวิว">`, {
+    onSave: async (d) => {
+      const r = await api('/api/admin/review-albums', { method: 'POST', body: { name: val(d, '#an') } });
+      st.album = r.id;
+      show();
+    },
+  });
+  if (!cur) return;
+  $view().querySelector('#editalbum').onclick = () => dialog('แก้อัลบั้ม', `
+    <label class="f">ชื่ออัลบั้ม</label><input class="input" id="an" maxlength="30" value="${esc(cur.name)}">
+    <label class="f">การแสดงผล</label><select class="input" id="aa"><option value="1">แสดงในหน้าจอง</option><option value="0" ${cur.active ? '' : 'selected'}>ซ่อน</option></select>`, {
+    onSave: async (d) => {
+      await api('/api/admin/review-albums/' + cur.id, { method: 'PUT', body: { name: val(d, '#an'), active: val(d, '#aa') === '1' } });
+      show();
+    },
+  });
+  $view().querySelector('#delalbum').onclick = async () => {
+    if (!confirm(`ลบอัลบั้ม "${cur.name}" และรูปทั้งหมด ${cur.photos.length} รูป? ลบแล้วกู้คืนไม่ได้`)) return;
+    await api('/api/admin/review-albums/' + cur.id, { method: 'DELETE' });
+    st.album = null;
+    show();
+  };
+  const files = $view().querySelector('#files');
+  $view().querySelector('#addphotos').onclick = () => files.click();
+  files.onchange = async () => {
+    const list = [...files.files];
+    if (!list.length) return;
+    const btn = $view().querySelector('#addphotos');
+    btn.disabled = true;
+    let done = 0;
+    for (const f of list) {
+      btn.textContent = `กำลังอัปโหลด ${done + 1}/${list.length}…`;
+      try {
+        const { dataUrl } = await loadImage(f, 1080, 0.82);
+        await api('/api/admin/review-photos', { method: 'POST', body: { album_id: cur.id, image: dataUrl } });
+        done++;
+      } catch (e) {
+        toast(errText(e));
+      }
+    }
+    toast(`เพิ่มแล้ว ${done} รูป`);
+    show();
+  };
+  const reorder = async (from, to) => {
+    const ids = cur.photos.map((p) => p.id);
+    [ids[from], ids[to]] = [ids[to], ids[from]];
+    await api('/api/admin/review-photos/reorder', { method: 'POST', body: { ids } });
+    show();
+  };
+  $view().querySelectorAll('[data-up]').forEach((b) => (b.onclick = () => reorder(Number(b.dataset.up), Number(b.dataset.up) - 1)));
+  $view().querySelectorAll('[data-down]').forEach((b) => (b.onclick = () => reorder(Number(b.dataset.down), Number(b.dataset.down) + 1)));
+  $view().querySelectorAll('[data-ph]').forEach((b) => (b.onclick = () => {
+    const p = cur.photos.find((x) => x.id === Number(b.dataset.ph));
+    dialog('แก้รูปรีวิว', `
+      <img src="${imgUrl(p.image_id)}" alt="" style="width:100%;max-height:300px;object-fit:contain;border-radius:12px;background:#f3eaf5">
+      <label class="f">คำอธิบายสั้น ๆ (ถ้ามี)</label><input class="input" id="pc" maxlength="120" value="${esc(p.caption || '')}" placeholder="เช่น ทรงนี้ใส่ได้ทุกวัน">
+      <label class="f">ทรงในรูป (ลูกค้ากด "จองทรงนี้" จากสตอรี่ได้)</label>
+      <select class="input" id="ps"><option value="">ไม่ระบุ</option>${list.filter((s) => s.active).map((s) => `<option value="${s.id}" ${p.style_id === s.id ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select>`, {
+      extraFoot: '<button class="btn bad" id="delph" style="flex:1">ลบ</button>',
+      onSave: async (d) => {
+        await api('/api/admin/review-photos/' + p.id, { method: 'PUT', body: { caption: val(d, '#pc'), style_id: val(d, '#ps') } });
+        show();
+      },
+    });
+    $dlg().querySelector('#delph').onclick = async () => {
+      if (!confirm('ลบรูปนี้?')) return;
+      await api('/api/admin/review-photos/' + p.id, { method: 'DELETE' });
+      $dlg().close();
+      show();
+    };
+  }));
 }
 
 // =================================================================== holidays & time blocks

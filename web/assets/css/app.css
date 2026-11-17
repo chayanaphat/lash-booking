@@ -239,3 +239,39 @@ a.btn { display: inline-block; text-align: center; text-decoration: none; }
 .adminrow .code { font-size: 11px; }
 
 .stampbadge { font-size: 11px; font-weight: 600; color: var(--rose); background: #f6ecf9; border-radius: 99px; padding: 1px 7px; margin-left: 4px; white-space: nowrap; vertical-align: middle; }
+
+/* review highlights (stories) */
+.hl-row { display: flex; gap: 14px; overflow-x: auto; padding: 12px 2px 2px; scrollbar-width: none; }
+.hl-row::-webkit-scrollbar { display: none; }
+.hl { flex: none; width: 70px; border: 0; background: none; padding: 0; font: inherit; color: inherit; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+.ring { width: 64px; height: 64px; border-radius: 50%; padding: 2.5px; background: conic-gradient(var(--gold), var(--rose-2), var(--gold)); display: block; box-sizing: border-box; }
+.ring.off { background: #cbbfd0; }
+.ring .in { display: block; width: 100%; height: 100%; border-radius: 50%; border: 2.5px solid #fff; overflow: hidden; background: #f3eaf5; box-sizing: border-box; }
+.ring .in img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ring.sm { width: 34px; height: 34px; padding: 2px; }
+.ring.sm .in { border-width: 1.5px; }
+.hl .nm { font-size: 12px; font-weight: 600; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hl.on .nm { color: var(--rose); }
+.hl.on .ring { outline: 2px solid var(--rose); outline-offset: 2px; }
+.story { position: fixed; inset: 0; z-index: 100; background: #1d1322; color: #fff; display: flex; justify-content: center; }
+.story-in { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 10px; padding: calc(10px + env(safe-area-inset-top)) 12px calc(14px + env(safe-area-inset-bottom)); box-sizing: border-box; }
+.story-bars { display: flex; gap: 4px; }
+.story-bars span { flex: 1; height: 3px; border-radius: 99px; background: rgba(255,255,255,.3); overflow: hidden; }
+.story-bars span i { display: block; height: 100%; width: 0; background: #fff; }
+.story-bars span.done i { width: 100%; }
+.story-bars span.now i { animation: storybar 5s linear forwards; }
+.story.paused .story-bars span.now i { animation-play-state: paused; }
+@keyframes storybar { to { width: 100%; } }
+.story-head { display: flex; align-items: center; gap: 10px; }
+.story-x { width: 44px; height: 44px; border: 0; background: none; color: #fff; font-size: 20px; cursor: pointer; }
+.story-img { position: relative; flex: 1; min-height: 0; border-radius: 16px; overflow: hidden; background: #2b1e31; display: flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; }
+.story-img img { max-width: 100%; max-height: 100%; object-fit: contain; pointer-events: none; -webkit-touch-callout: none; }
+.story-prev, .story-next { position: absolute; top: 0; bottom: 0; border: 0; background: transparent; cursor: pointer; }
+.story-prev { left: 0; width: 35%; }
+.story-next { right: 0; width: 65%; }
+.story-cap { font-size: 14px; line-height: 1.5; text-align: center; }
+.story-book { width: 100%; background: var(--gold); color: #2a1a10; }
+.rv-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f3eaf5; }
+.rv-thumb { width: 48px; height: 64px; object-fit: cover; border-radius: 8px; flex: none; background: #f3eaf5; }
+.rv-acts { display: flex; gap: 4px; }
+.rv-acts .btn.sm { min-width: 36px; padding-left: 8px; padding-right: 8px; }

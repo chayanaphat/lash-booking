@@ -146,3 +146,23 @@ CREATE TABLE IF NOT EXISTS time_blocks (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_blocks_date ON time_blocks(date);
+
+-- อัลบั้มรีวิว/ไฮไลต์ (แสดงแบบสตอรี่ในหน้าจอง) — worker สร้างให้อัตโนมัติถ้ายังไม่มี
+CREATE TABLE IF NOT EXISTS review_albums (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  sort INTEGER NOT NULL DEFAULT 0,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS review_photos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  album_id INTEGER NOT NULL,
+  image_id TEXT NOT NULL,
+  caption TEXT NOT NULL DEFAULT '',
+  style_id INTEGER,
+  sort INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_review_photos_album ON review_photos(album_id, sort);
+-- styles.stamps (แต้มต่อทรง 0–5) — worker เพิ่มคอลัมน์ให้อัตโนมัติ
