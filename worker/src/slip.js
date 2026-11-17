@@ -1,7 +1,6 @@
 // Slip verification
 // - ถ้าตั้ง secret EASYSLIP_API_KEY: ตรวจสลิปอัตโนมัติผ่าน EasySlip (ยอดเงิน, สลิปซ้ำ, ชื่อผู้รับ)
 // - ถ้าไม่ตั้ง: ส่งเข้าคิว "รอแอดมินตรวจ" ให้แอดมินกดยืนยันเองในหน้า admin
-import { b64FromBytes } from './util.js';
 
 const REJECT_MESSAGES = {
   duplicate_slip: 'สลิปนี้เคยถูกใช้แล้ว',
@@ -26,11 +25,11 @@ export async function verifySlip(env, { bytes, mime, payload }, expectedAmount) 
       const q = new URLSearchParams({ payload, checkDuplicate: 'true' });
       r = await fetch(`${base}/verify?${q}`, { headers });
     } else {
-      r = await fetch(`${base}/verify`, {
-        method: 'POST',
-        headers: { ...headers, 'content-type': 'application/json' },
-        body: JSON.stringify({ image: `data:${mime};base64,${b64FromBytes(bytes)}`, checkDuplicate: true }),
-      });
+      // multipart upload (documented as: -F file=@slip.jpg)
+      const form = new FormData();
+      form.append('file', new Blob([bytes], { type: mime || 'image/jpeg' }), 'slip.jpg');
+      form.append('checkDuplicate', 'true');
+      r = await fetch(`${base}/verify`, { method: 'POST', headers, body: form });
     }
   } catch (e) {
     return { status: 'manual', reason: 'เชื่อมต่อระบบตรวจสลิปไม่ได้' };
