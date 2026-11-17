@@ -11,7 +11,7 @@ async function call(env, path, body) {
   }
   const r = await fetch(API + path, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN}` },
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${env.LINE_CHANNEL_ACCESS_TOKEN.trim()}` },
     body: JSON.stringify(body),
   });
   if (!r.ok) console.error('LINE API', path, r.status, await r.text());
@@ -37,6 +37,8 @@ export async function getMessageContent(env, messageId) {
 }
 
 export async function verifySignature(secret, body, signature) {
+  secret = (secret || '').trim();
+  signature = (signature || '').trim();
   if (!secret || !signature) return false;
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
   const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));

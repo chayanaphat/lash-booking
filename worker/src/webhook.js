@@ -9,7 +9,10 @@ import { bkkNow, errorResponse, json, thaiDate } from './util.js';
 export async function handleWebhook(req, env, ctx) {
   const body = await req.text();
   const ok = await verifySignature(env.LINE_CHANNEL_SECRET, body, req.headers.get('x-line-signature'));
-  if (!ok) return errorResponse(401, 'bad_signature');
+  if (!ok) {
+    console.warn('webhook bad_signature', { secretSet: !!env.LINE_CHANNEL_SECRET, secretLen: (env.LINE_CHANNEL_SECRET || '').trim().length });
+    return errorResponse(401, 'bad_signature');
+  }
   const data = JSON.parse(body);
   ctx.waitUntil(Promise.all((data.events || []).map((e) => handleEvent(e, env).catch((err) => console.error('event', err)))));
   return json({ ok: true });
