@@ -1,8 +1,8 @@
 import {
   STATUS, addDays, api, baht, bkkTime, dayName, errText, esc, imgUrl, initLiff, loadImage, monthShort,
   profile, promoRange, promoText, readSlipQR, thaiDate, toast, weekday,
-} from './core.js?v=1794928901';
-import { promptPayPayload } from './promptpay.js?v=1794928901';
+} from './core.js?v=1794931793';
+import { promptPayPayload } from './promptpay.js?v=1794931793';
 
 const $app = document.getElementById('app');
 const $bar = document.getElementById('bar');
@@ -55,6 +55,7 @@ function render() {
 const go = (h) => (location.hash = h);
 const styleById = (id) => state.info.styles.find((s) => s.id === Number(id));
 const isAddon = (id) => styleById(id)?.kind === 'addon';
+const redeemNames = () => (state.info?.styles || []).filter((s) => Number(s.redeemable)).map((s) => s.name).join(', ');
 const stampStyleNames = () => (state.info?.styles || []).filter((s) => s.stamps > 0).map((s) => `${s.name}${s.stamps > 1 ? ` (+${s.stamps})` : ''}`).join(', ');
 const peopleCount = () => state.cart.filter((id) => !isAddon(id)).length;
 // บริการเสริมแต่ละอย่างมีได้ไม่เกินจำนวนคน (คนละ 1) — ตัดส่วนเกินออกเมื่อลบคน
@@ -107,7 +108,7 @@ function viewHome() {
     ${nowPromos.map((p) => `
       <div class="promo"><div class="t">🎀 ${esc(p.name)}</div><div class="d">${esc(promoText(p, styles))}${promoRange(p) ? ' · ' + esc(promoRange(p)) : ''}</div></div>`).join('')}
 
-    ${u.stamps >= req ? `<div class="card mt" style="background:#fff8ec">🎁 <b>คุณมีสิทธิ์ต่อขนตาฟรี 1 ทรง!</b><div class="small muted">เลือกใช้สิทธิ์ได้ในขั้นตอนเลือกวันเวลา</div></div>` : ''}
+    ${u.stamps >= req ? `<div class="card mt" style="background:#fff">🎁 <b>คุณมีสิทธิ์ต่อขนตาฟรี 1 ทรง!</b><div class="small muted">เลือกใช้สิทธิ์ได้ในขั้นตอนเลือกวันเวลา${redeemNames() ? ` · ใช้ได้กับ ${esc(redeemNames())}` : ''}</div></div>` : ''}
 
     <div class="section-title">เลือกบริการ</div>
     <p class="small muted" style="margin-top:-6px">ต่อขนตาใช้เวลาประมาณ 2 ชั่วโมง · มากับเพื่อน? เลือกให้เพื่อนเพิ่มได้ (สูงสุด ${settings.max_people} คน)</p>
@@ -256,7 +257,7 @@ function styleCard(s) {
       <div class="b">
         <div class="n">${esc(s.name)}</div>
         ${s.description ? `<div class="tiny muted">${esc(s.description)}</div>` : ''}
-        <div class="p">${baht(s.price)}${s.stamps > 0 ? ` <span class="stampbadge">💗 +${s.stamps} แต้ม</span>` : ''}</div>
+        <div class="p">${baht(s.price)}${s.stamps > 0 ? ` <span class="stampbadge">💗 +${s.stamps} แต้ม</span>` : ''}${Number(s.redeemable) && state.me.user.stamps >= state.me.stamps_required ? ` <span class="stampbadge gift">🎁 แลกฟรีได้</span>` : ''}</div>
         <button class="btn sm ghost add" data-add="${s.id}">${addon ? '+ เพิ่มบริการนี้' : '+ เลือก'}</button>
       </div>
     </div>`;
@@ -303,7 +304,7 @@ function openDates() {
 async function viewBook() {
   const dates = openDates();
   if (!state.date || !dates.find((d) => d.date === state.date && d.open)) state.date = dates.find((d) => d.open)?.date || null;
-  const eligible = state.cart.some((id) => (styleById(id)?.stamps || 0) > 0);
+  const eligible = state.cart.some((id) => Number(styleById(id)?.redeemable));
   const hasStamps = state.me.user.stamps >= state.me.stamps_required;
   const canReward = hasStamps && eligible;
   if (!canReward) state.useReward = false;
@@ -332,7 +333,7 @@ async function viewBook() {
     ${canReward ? `
       <label class="check mt"><input type="checkbox" id="reward" ${state.useReward ? 'checked' : ''}/>
         <div><b>🎁 ใช้สิทธิ์ฟรี 1 ทรง</b><div class="tiny muted">ใช้ ${state.me.stamps_required} แต้ม (คุณมี ${state.me.user.stamps})</div></div></label>`
-      : hasStamps ? `<div class="card mt small muted">🎁 คุณมีสิทธิ์ฟรี 1 ทรง — ใช้ได้กับทรงที่มี 💗 แต้ม (${esc(stampStyleNames())})</div>` : ''}
+      : hasStamps ? `<div class="card mt small muted" style="background:#fff">🎁 คุณมีสิทธิ์ฟรี 1 ทรง — ใช้ได้กับ ${esc(redeemNames() || '-')}</div>` : ''}
 
     <div class="section-title">สรุปราคา</div>
     <div class="card" id="summary"><div class="spinner"></div></div>
@@ -627,6 +628,7 @@ async function viewMy() {
       </div>
       <div class="small mt" style="opacity:.85">${st >= req ? '🎁 ใช้สิทธิ์ต่อขนตาฟรี 1 ทรง ได้ในการจองครั้งถัดไป!' : `สะสมครบ ${req} แต้ม รับฟรี 1 ทรง · อีก ${req - st} แต้ม`}</div>
       ${stampStyleNames() ? `<div class="tiny mt" style="opacity:.75">ได้แต้มจาก: ${esc(stampStyleNames())}</div>` : ''}
+      ${redeemNames() ? `<div class="tiny" style="opacity:.75">แลกฟรีได้: ${esc(redeemNames())}</div>` : ''}
     </div>
 
     ${state.info.settings.review_url && bookings.some((b) => b.status === 'completed') ? `

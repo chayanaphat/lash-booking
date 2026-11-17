@@ -165,4 +165,4 @@ CREATE TABLE IF NOT EXISTS review_photos (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_review_photos_album ON review_photos(album_id, sort);
--- styles.stamps (แต้มต่อทรง 0–5) — worker เพิ่มคอลัมน์ให้อัตโนมัติ
+-- styles.stamps (แต้มต่อทรง 0–5) และ styles.redeemable (แลกฟรีด้วยแต้มได้) — worker เพิ่มคอลัมน์ให้อัตโนมัติ

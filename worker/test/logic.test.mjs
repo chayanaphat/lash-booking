@@ -4,9 +4,9 @@ import { quote, promoText } from '../src/pricing.js';
 import { computeSlots } from '../src/slots.js';
 
 const styles = {
-  1: { id: 1, name: 'A', price: 450, duration_min: 120, stamps: 1 },
-  2: { id: 2, name: 'B', price: 550, duration_min: 120, stamps: 1 },
-  3: { id: 3, name: 'A+', price: 590, duration_min: 120, stamps: 1 },
+  1: { id: 1, name: 'A', price: 450, duration_min: 120, stamps: 1, redeemable: 1 },
+  2: { id: 2, name: 'B', price: 550, duration_min: 120, stamps: 1, redeemable: 1 },
+  3: { id: 3, name: 'A+', price: 590, duration_min: 120, stamps: 1, redeemable: 1 },
 };
 const jan = { start_date: '2027-01-01', end_date: '2027-01-31', active: true };
 const come2 = { id: 10, name: 'มา 2 ลด 50', type: 'discount', min_people: 2, discount: 50, ...jan };
@@ -107,4 +107,15 @@ test('แต้มตามทรง: เฉพาะทรงที่ตั้
   assert.deepEqual(r.items.map((i) => i.price), [0, 399]); // ฟรีเฉพาะทรงที่ได้แต้ม
   assert.equal(r.stamps_earned, 0);
   assert.throws(() => quote(st, [7], [], '2026-12-01', { useReward: true }), /reward_not_eligible/);
+});
+
+test('แลกแต้มได้เฉพาะทรงที่ตั้ง redeemable (แยกจากการได้แต้ม)', () => {
+  const st = {
+    1: { id: 1, name: 'A', price: 450, duration_min: 120, stamps: 1, redeemable: 0 },
+    2: { id: 2, name: 'Lift', price: 399, duration_min: 60, stamps: 0, redeemable: 1 },
+  };
+  const q = quote(st, [1, 2], [], '2026-12-01', { useReward: true });
+  assert.deepEqual(q.items.map((i) => i.price), [450, 0]);
+  assert.equal(q.stamps_earned, 1);
+  assert.throws(() => quote(st, [1], [], '2026-12-01', { useReward: true }), /reward_not_eligible/);
 });

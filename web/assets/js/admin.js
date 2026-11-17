@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1794928901';
+} from './core.js?v=1794931793';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -211,10 +211,10 @@ async function styles() {
         <div class="grow"><b>${esc(s.name)}</b> ${s.active ? '' : '<span class="tag">ซ่อน</span>'}
           <div class="small muted">${esc(s.description)}</div>
           <div class="small">${baht(s.price)} · ${s.duration_min} นาที · ลำดับ ${s.sort}</div>
-          <div class="tiny muted">${esc(s.category || '')}${s.kind === 'addon' ? ' · บริการเสริม' : ''}${s.stamps > 0 ? ` · <span style="color:var(--rose)">💗 +${s.stamps} แต้ม</span>` : ' · ไม่ได้แต้ม'}</div></div>
+          <div class="tiny muted">${esc(s.category || '')}${s.kind === 'addon' ? ' · บริการเสริม' : ''}${s.stamps > 0 ? ` · <span style="color:var(--rose)">💗 +${s.stamps} แต้ม</span>` : ' · ไม่ได้แต้ม'}${Number(s.redeemable) ? ' · <span style="color:#a2742a">🎁 แลกแต้มได้</span>' : ''}</div></div>
         <button class="btn sm outline" data-edit="${s.id}">แก้ไข</button>
       </div>`).join('') || '<div class="empty">ยังไม่มีทรง</div>'}</div>`;
-  $view().querySelector('#add').onclick = () => styleForm({ name: '', description: '', price: '', duration_min: 120, sort: st.styles.length + 1, active: 1, category: st.styles[0]?.category || 'ต่อขนตา (เลือกทรง)', kind: 'main', stamps: 0 });
+  $view().querySelector('#add').onclick = () => styleForm({ name: '', description: '', price: '', duration_min: 120, sort: st.styles.length + 1, active: 1, category: st.styles[0]?.category || 'ต่อขนตา (เลือกทรง)', kind: 'main', stamps: 0, redeemable: 0 });
   $view().querySelectorAll('[data-edit]').forEach((b) => (b.onclick = () => styleForm(st.styles.find((s) => s.id === Number(b.dataset.edit)))));
 }
 
@@ -238,13 +238,14 @@ function styleForm(s) {
       <div><label class="f">ใช้เวลา (นาที)</label><input class="input" id="dur" type="number" min="15" step="15" value="${s.duration_min}"></div>
       <div><label class="f">ลำดับการแสดง</label><input class="input" id="sort" type="number" value="${s.sort}"></div>
       <div><label class="f">สถานะ</label><select class="input" id="active"><option value="1">แสดง</option><option value="0" ${s.active ? '' : 'selected'}>ซ่อน</option></select></div>
+      <div><label class="f">แลกฟรีด้วยแต้ม</label><select class="input" id="redeem"><option value="0">แลกไม่ได้</option><option value="1" ${Number(s.redeemable) ? 'selected' : ''}>🎁 แลกได้</option></select></div>
       <div><label class="f">แต้มสะสมที่ได้</label><select class="input" id="stamps">${[0, 1, 2, 3, 4, 5].map((n) => `<option value="${n}" ${Number(s.stamps || 0) === n ? 'selected' : ''}>${n ? `💗 +${n} แต้ม` : 'ไม่ได้แต้ม'}</option>`).join('')}</select></div>
     </div>`, {
     extraFoot: s.id ? '<button class="btn bad" id="del" style="flex:1">ลบ</button>' : '',
     onSave: async (d) => {
       await api(`/api/admin/styles${s.id ? '/' + s.id : ''}`, {
         method: s.id ? 'PUT' : 'POST',
-        body: { name: val(d, '#name'), description: val(d, '#desc'), price: val(d, '#price'), duration_min: val(d, '#dur'), sort: val(d, '#sort'), active: val(d, '#active') === '1', image_id: imageId, category: val(d, '#cat'), kind: val(d, '#kind'), stamps: val(d, '#stamps') },
+        body: { name: val(d, '#name'), description: val(d, '#desc'), price: val(d, '#price'), duration_min: val(d, '#dur'), sort: val(d, '#sort'), active: val(d, '#active') === '1', image_id: imageId, category: val(d, '#cat'), kind: val(d, '#kind'), stamps: val(d, '#stamps'), redeemable: val(d, '#redeem') },
       });
       toast('บันทึกแล้ว');
       show();

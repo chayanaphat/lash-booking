@@ -56,6 +56,7 @@ export function quote(styles, styleIds, promos, date, { useReward = false } = {}
       image_id: s.image_id || null,
       kind: s.kind || 'main',
       stamps: Number(s.stamps) || 0,
+      redeemable: !!Number(s.redeemable),
       duration_min: s.duration_min || 120,
       base_price: s.price,
       price: best,
@@ -64,11 +65,11 @@ export function quote(styles, styleIds, promos, date, { useReward = false } = {}
     };
   });
 
-  // ใช้สิทธิ์ฟรี: ฟรีทรงที่แพงที่สุด เฉพาะทรงที่ได้แต้ม (stamps > 0)
+  // ใช้สิทธิ์ฟรี: ฟรีทรงที่แพงที่สุด เฉพาะทรงที่ตั้งว่า "แลกด้วยแต้มได้"
   if (useReward) {
     let idx = -1;
     items.forEach((it, i) => {
-      if (it.stamps > 0 && (idx < 0 || it.price > items[idx].price)) idx = i;
+      if (it.redeemable && (idx < 0 || it.price > items[idx].price)) idx = i;
     });
     if (idx < 0) throw new Error('reward_not_eligible');
     items[idx] = { ...items[idx], price: 0, reward: true, promotion: null };

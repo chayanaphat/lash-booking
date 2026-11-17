@@ -275,3 +275,4 @@ a.btn { display: inline-block; text-align: center; text-decoration: none; }
 .rv-thumb { width: 48px; height: 64px; object-fit: cover; border-radius: 8px; flex: none; background: #f3eaf5; }
 .rv-acts { display: flex; gap: 4px; }
 .rv-acts .btn.sm { min-width: 36px; padding-left: 8px; padding-right: 8px; }
+.stampbadge.gift { color: #a2742a; background: #fff3d6; }

@@ -75,6 +75,13 @@ export async function ensureStyleStamps(env) {
   } catch (e) {
     if (!/duplicate column/i.test(String(e?.message || e))) throw e;
   }
+  // styles.redeemable = แลกฟรีด้วยแต้มได้ (ครั้งแรกที่เพิ่มคอลัมน์: ตั้งตามทรงที่ได้แต้ม)
+  try {
+    await env.DB.prepare('ALTER TABLE styles ADD COLUMN redeemable INTEGER NOT NULL DEFAULT 0').run();
+    await env.DB.prepare('UPDATE styles SET redeemable = 1 WHERE stamps > 0').run();
+  } catch (e) {
+    if (!/duplicate column/i.test(String(e?.message || e))) throw e;
+  }
   stylesStampsReady = true;
 }
 export async function getStyles(env, { activeOnly = false } = {}) {

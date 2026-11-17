@@ -115,7 +115,7 @@ export const ERR = {
   booking_not_awaiting_deposit: 'การจองนี้ไม่อยู่ในสถานะรอชำระมัดจำ',
   too_many_people: 'เลือกจำนวนคนเกินที่ร้านรับได้',
   too_many_addons: 'บริการเสริมเลือกได้คนละ 1 ครั้ง',
-  reward_not_eligible: 'สิทธิ์ฟรีใช้ได้กับทรงที่ได้แต้มเท่านั้น',
+  reward_not_eligible: 'สิทธิ์ฟรีใช้ได้กับทรงที่ร่วมรายการแลกแต้มเท่านั้น',
   invalid_time_range: 'เวลาเริ่มต้องน้อยกว่าเวลาสิ้นสุด',
 };
 export const errText = (e) => ERR[e?.message] || 'เกิดข้อผิดพลาด (' + (e?.message || 'unknown') + ')';
