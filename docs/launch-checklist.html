@@ -76,6 +76,14 @@
           <li>โปรโมชัน: ตอนนี้ไม่มีโปรที่เปิดใช้ เพิ่มได้ในแท็บ 🎀 โปรโมชั่น</li>
         </ul></div>
       </div></li>
+      <li><input type="checkbox" data-id="14"><span class="n">14</span><div>
+        <div class="t">เพิ่มบริการ สักคิ้ว และ ฝังสีปาก ในระบบจอง<span class="who">ร้าน</span></div>
+        <div class="d">Facebook Page บอกว่าร้านรับสักคิ้วและฝังสีปาก แต่ระบบจองยังไม่มี 2 บริการนี้ เพิ่มได้ที่หน้าแอดมิน → 👁️ ทรงขนตา → + เพิ่ม (หมวด "บริการอื่น ๆ") ต้องใช้ราคา เวลาที่ใช้ และรูป แล้วอัปเดตราคาในโปรไฟล์ LINE OA ให้ตรงด้วย</div>
+      </div></li>
+      <li><input type="checkbox" data-id="15"><span class="n">15</span><div>
+        <div class="t">ยืนยันเวลาเปิด-ปิดร้าน<span class="who">ร้าน</span></div>
+        <div class="d">ตอนนี้ระบบจอง, LINE OA, Google และ Facebook ใช้ 10:00–19:00 ทุกวัน แต่ภาพปก Facebook เขียนว่า <b>10:00–23:30</b> ถ้าเวลาจริงต่างจากนี้ แก้ในหน้าแอดมิน → ⏰ เวลาเปิด-ปิด แล้วบอกทีมให้แก้ที่อื่นตาม</div>
+      </div></li>
       <li><input type="checkbox" data-id="4"><span class="n">4</span><div>
         <div class="t">ทดสอบจองจริง 1 รอบ<span class="who">ร้าน + ทีม</span></div>
         <div class="d">จอง → ได้การ์ดมัดจำในแชท → โอน ฿100 แล้วส่งสลิป → Sine ได้แจ้งเตือน → กดยืนยัน → กด "มาใช้บริการแล้ว" (ได้ +1 แต้ม และข้อความชวนรีวิว)</div>
@@ -115,6 +123,17 @@
         <div class="t">ถ่ายภาพ flow ใหม่หลังใส่ทรงจริง</div>
         <div class="d">ภาพใน <code>docs/flow-*.png</code> ใช้โลโก้ใหม่แล้ว แต่ยังเป็นทรงตัวอย่าง ทำหลังข้อ 2</div>
       </div></li>
+      <li><input type="checkbox" data-id="16"><span class="n">16</span><div>
+        <div class="t">ข้อความสถานะ LINE OA ให้ยาวขึ้น (ไม่เกิน 60 ตัวอักษร)</div>
+        <div class="d">ตอนนี้: "ต่อขนตา·ลิฟติ้ง หนองคาย" ช่องนี้ใส่ได้ถึง 60 ตัวอักษร เช่น "ต่อขนตา·ลิฟติ้งขนตาและคิ้ว หนองคาย จองคิวในเมนู" แก้ได้หลัง 16:43 ของ 17 พ.ย. (เปลี่ยนแล้วต้องรอ 1 ชั่วโมงถึงแก้ได้อีก)</div>
+      </div></li>
+      <li><input type="checkbox" data-id="17"><span class="n">17</span><div>
+        <div class="t">รูปโปรไฟล์และภาพปก Facebook Page</div>
+        <div class="d"><ul>
+          <li>รูปโปรไฟล์: เปลี่ยนเป็นโลโก้ไม่มีคำล่าง (<code>docs/logo-square.jpg</code>) ให้เหมือน LINE OA เปลี่ยนแล้ว Facebook จะโพสต์ให้อัตโนมัติ</li>
+          <li>ภาพปก: แก้เวลาเปิดให้ตรงกับข้อ 15 และใส่ "จองคิวผ่าน LINE"</li>
+        </ul></div>
+      </div></li>
       <li><input type="checkbox" data-id="12"><span class="n">12</span><div>
         <div class="t">สิทธิ์ LINE OA Manager ของ Top</div>
         <div class="d">ถ้าต้องการให้ Top ตอบแชทหรือแก้ Rich menu เองใน OA Manager</div>
@@ -130,6 +149,8 @@
       <li><input type="checkbox" checked disabled><span class="n">7</span><div><div class="t">Sine แอดเพื่อน OA (แจ้งเตือนแอดมินส่งถึง Sine)</div></div></li>
       <li><input type="checkbox" checked disabled><span class="n">11</span><div><div class="t">ภาพ flow ชุดใหม่ด้วยโลโก้ใหม่ (<code>docs/</code>)</div></div></li>
       <li><input type="checkbox" checked disabled><span class="n">13</span><div><div class="t">โฟลเดอร์บน Mac เชื่อมกับ GitHub แล้ว · จัด repo: <code>info/</code> → <code>docs/</code>, ลบ <code>scripts/</code></div></div></li>
+      <li><input type="checkbox" checked disabled><span class="n">✓</span><div><div class="t">โปรไฟล์ LINE OA ครบ</div><div class="d">สถานะ, ที่อยู่ + แผนที่, เบอร์โทร + ปุ่มโทร, ลิงก์จองคิวออนไลน์, แผนที่ร้าน, Facebook, เวลาทำการ, ราคา, วิธีชำระเงิน (เงินสด/PromptPay), สถานที่ (ห้องส่วนตัว/ที่จอดรถ/Wi-Fi), บริการ "จอง"</div></div></li>
+      <li><input type="checkbox" checked disabled><span class="n">✓</span><div><div class="t">Facebook Page เชื่อมกับระบบจอง</div><div class="d">Bio มีลิงก์จอง LINE, เบอร์โทร, LINE @xkr5690w, ลิงก์ "จองคิวออนไลน์ผ่าน LINE", เวลา 10:00–19:00 ทุกวัน, ปุ่มหลักของเพจ "ติดต่อเรา" พาไปหน้าจอง LINE (Facebook ใช้ปุ่ม "จองเลย" ได้เฉพาะกับระบบจองที่เป็นพาร์ทเนอร์)</div></div></li>
     </ul>
   </section>
 
@@ -141,6 +162,8 @@
       <div><b>API (Cloudflare Worker)</b><a href="https://lash-booking-api.k-chayanaphat.workers.dev/">lash-booking-api.k-chayanaphat.workers.dev</a></div>
       <div><b>โค้ด</b><a href="https://github.com/chayanaphat/lash-booking">github.com/chayanaphat/lash-booking</a></div>
       <div><b>LINE Developers</b><a href="https://developers.line.biz/console/">developers.line.biz/console</a></div>
+      <div><b>Facebook Page</b><a href="https://www.facebook.com/kingyoeyelash/">facebook.com/kingyoeyelash</a></div>
+      <div><b>LINE OA Manager</b><a href="https://manager.line.biz/account/@xkr5690w">manager.line.biz · @xkr5690w</a></div>
       <div><b>Google Maps ร้าน</b><a href="https://maps.app.goo.gl/NW6CUYiaUpkZCRYV6">maps.app.goo.gl/NW6CUYiaUpkZCRYV6</a></div>
     </div>
   </section>
