@@ -1,9 +1,9 @@
 import {
   STATUS, addDays, api, baht, bkkTime, dayName, errText, esc, imgUrl, initLiff, loadImage, monthShort,
   profile, readSlipQR, thaiDate, toast, weekday,
-} from './core.js?v=1794939095';
-import { CONFIG } from './config.js?v=1794939095';
-import { promptPayPayload } from './promptpay.js?v=1794939095';
+} from './core.js?v=1794939510';
+import { CONFIG } from './config.js?v=1794939510';
+import { promptPayPayload } from './promptpay.js?v=1794939510';
 
 const $app = document.getElementById('app');
 const $bar = document.getElementById('bar');
@@ -139,7 +139,7 @@ function viewHome() {
   $app.innerHTML = `
     <section class="hero">
       <div class="hero-top">
-        <h1 class="wordmark"><img src="assets/logo-wordmark.png?v=1794939095" alt="${esc(settings.shop_name)}"></h1>
+        <h1 class="wordmark"><img src="assets/logo-wordmark.png?v=1794939510" alt="${esc(settings.shop_name)}"></h1>
         <div class="hero-user">
           <div class="tiny muted">สวัสดีค่ะ</div>
           <div class="small hero-name">${esc(u.display_name || profile?.displayName || '')}</div>
@@ -329,6 +329,8 @@ function stylePromo(s, people = 1) {
   // ไม่ต้องโชว์โปรมีเงื่อนไขที่ถูกน้อยกว่าราคาโปรที่ได้อยู่แล้ว
   return { best, cond: cond.filter((c) => !best || c.price < best.price) };
 }
+/** ป้ายส่วนลด: โปร % ขึ้นเป็น % นอกนั้นเป็นบาท */
+const offText = (p, s, price) => (p.type === 'percent' ? `${p.discount}%` : baht(s.price - price));
 const effPrice = (s, people = 1) => stylePromo(s, people).best?.price ?? s.price;
 function promoUntil(p) {
   if (!p.end_date) return 'ไม่มีกำหนดหมดเขต';
@@ -345,11 +347,11 @@ function styleCard(s) {
     ? `<div class="p sale">${baht(best.price)} <span class="strike">${baht(s.price)}</span>${stamp}</div>
        <div class="promo-note">ราคาพิเศษ · ${promoUntil(best.p)}</div>`
     : `<div class="p">${baht(s.price)}${stamp}</div>`;
-  const chips = cond.map((c) => `<span class="promo-chip">🔥 ${c.people > 1 ? `มา ${c.people} คน ` : ''}${c.future ? `เริ่ม ${shortDate(c.p.start_date)} ` : ''}ลด ${baht(s.price - c.price)}</span>`).join('');
+  const chips = cond.map((c) => `<span class="promo-chip">🔥 ${c.people > 1 ? `มา ${c.people} คน ` : ''}${c.future ? `เริ่ม ${shortDate(c.p.start_date)} ` : ''}ลด ${offText(c.p, s, c.price)}</span>`).join('');
   return `
     <div class="style rel ${n ? 'sel' : ''} ${addon ? 'addon' : ''}">
       ${s.image_id ? `<img class="ph" src="${imgUrl(s.image_id)}" alt="${esc(s.name)}" loading="lazy">` : `<div class="ph">${addon ? '✨' : '👁️'}</div>`}
-      ${best ? `<span class="promo-rb">🔥 ลด ${baht(s.price - best.price)}</span>` : ''}
+      ${best ? `<span class="promo-rb">🔥 ลด ${offText(best.p, s, best.price)}</span>` : ''}
       ${n ? `<span class="badge-n">${n}</span>` : ''}
       <div class="b">
         <div class="n">${esc(s.name)}</div>
