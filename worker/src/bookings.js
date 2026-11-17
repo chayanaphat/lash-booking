@@ -4,11 +4,11 @@ import {
   getSettings, getStyles, parseBooking, saveImage, styleMap,
 } from './db.js';
 import { push, multicast } from './line.js';
-import { adminNotice, confirmedFlex, text } from './messages.js';
+import { adminNotice, confirmedFlex, locationMessage, reminderFlex, text, thankYouFlex } from './messages.js';
 import { quote } from './pricing.js';
 import { verifySlip } from './slip.js';
 import { computeSlots } from './slots.js';
-import { HttpError, bkkNow, fromMin, genCode, isDate, isTime, isoAfterMinutes, nowISO, str, toMin } from './util.js';
+import { HttpError, addDays, bkkNow, fromMin, genCode, isDate, isTime, isoAfterMinutes, nowISO, str, toMin } from './util.js';
 
 export async function buildQuote(env, { date, style_ids, use_reward = false }, settings) {
   if (!isDate(date)) throw new HttpError(400, 'invalid_date');
@@ -165,7 +165,7 @@ export async function changeStatus(env, code, action, { note = '', date, time } 
       if (!isDate(date) || !isTime(time)) throw new HttpError(400, 'invalid_datetime');
       if (['cancelled', 'completed'].includes(b.status)) throw new HttpError(409, 'invalid_transition');
       const duration = toMin(b.end_time) - toMin(b.start_time);
-      stmts.push(env.DB.prepare(`UPDATE bookings SET date=?, start_time=?, end_time=?, admin_note=?, updated_at=? WHERE code=?`)
+      stmts.push(env.DB.prepare(`UPDATE bookings SET date=?, start_time=?, end_time=?, admin_note=?, updated_at=?, reminded_at=NULL WHERE code=?`)
         .bind(date, time, fromMin(toMin(time) + duration), note, now, code));
       customerMsg = 'confirmed';
       break;
@@ -177,6 +177,10 @@ export async function changeStatus(env, code, action, { note = '', date, time } 
   const updated = await getBookingByCode(env, code);
   if (settings.notify_customer && customerMsg) {
     await push(env, b.line_user_id, customerMsg === 'confirmed' ? confirmedFlex(env, updated, settings) : customerMsg).catch(console.error);
+  }
+  if (action === 'complete' && settings.review_request) {
+    const u = await env.DB.prepare('SELECT stamps FROM users WHERE line_user_id = ?').bind(b.line_user_id).first();
+    await push(env, b.line_user_id, thankYouFlex(env, updated, settings, u?.stamps || 0)).catch(console.error);
   }
   return updated;
 }
@@ -207,6 +211,30 @@ export async function expirePending(env) {
   }
   await env.DB.batch(stmts);
   return results.length;
+}
+
+/** cron: เตือนนัดล่วงหน้า 1 วัน (ส่งช่วง remind_hour ถึง remind_hour+3 เวลาไทย) */
+export async function sendReminders(env) {
+  const settings = await getSettings(env);
+  if (!settings.remind_day_before) return 0;
+  const now = bkkNow();
+  const hour = Number(now.time.slice(0, 2));
+  const start = Math.min(23, settings.remind_hour);
+  if (hour < start || hour >= start + 3) return 0;
+  const tomorrow = addDays(now.date, 1);
+  const { results } = await env.DB.prepare(
+    `SELECT * FROM bookings WHERE date = ? AND status = 'confirmed' AND reminded_at IS NULL AND created_at < ? LIMIT 50`,
+  ).bind(tomorrow, isoAfterMinutes(-120)).all();
+  let sent = 0;
+  for (const row of results) {
+    const b = parseBooking(row);
+    const msgs = [reminderFlex(env, b, settings), locationMessage(settings)].filter(Boolean);
+    const r = await push(env, b.line_user_id, msgs).catch((e) => (console.error('reminder', e), null));
+    // mark even on failure so a bad recipient is not retried every 10 minutes
+    await env.DB.prepare('UPDATE bookings SET reminded_at = ? WHERE code = ?').bind(nowISO(), b.code).run();
+    if (r?.ok) sent++;
+  }
+  return sent;
 }
 
 export async function latestPendingFor(env, userId) {

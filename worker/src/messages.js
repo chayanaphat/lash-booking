@@ -129,6 +129,63 @@ export function confirmedFlex(env, b, settings = {}) {
 
 export const text = (t) => ({ type: 'text', text: t });
 
+function bubble(color, title, subtitle, bodyContents, buttons) {
+  return {
+    type: 'bubble',
+    header: {
+      type: 'box', layout: 'vertical', backgroundColor: color, paddingAll: '16px',
+      contents: [
+        { type: 'text', text: title, color: '#FFFFFF', weight: 'bold', size: 'lg', wrap: true },
+        subtitle ? { type: 'text', text: subtitle, color: '#F3E6FA', size: 'sm', wrap: true } : null,
+      ].filter(Boolean),
+    },
+    body: { type: 'box', layout: 'vertical', spacing: 'sm', contents: bodyContents },
+    footer: buttons.length ? { type: 'box', layout: 'vertical', spacing: 'sm', contents: buttons } : undefined,
+  };
+}
+const uriButton = (label, uri, primary = false) => ({
+  type: 'button', style: primary ? 'primary' : 'secondary', ...(primary ? { color: ROSE } : {}),
+  action: { type: 'uri', label, uri },
+});
+
+/** เตือนนัดล่วงหน้า 1 วัน */
+export function reminderFlex(env, b, settings = {}) {
+  const due = Math.max(0, b.total - (b.deposit_amount || 0));
+  return {
+    type: 'flex',
+    altText: `พรุ่งนี้มีนัดนะคะ ${thaiDate(b.date)} ${b.start_time} น.`,
+    contents: bubble(ROSE, 'พรุ่งนี้มีนัดนะคะ 💜', `${thaiDate(b.date)} · ${b.start_time} น.`, [
+      ...bookingRows(b),
+      row('ชำระที่ร้าน', baht(due), true),
+      { type: 'text', text: 'มาสายได้ไม่เกิน 5–10 นาที หากต้องการเลื่อนนัด แจ้งในแชทล่วงหน้าอย่างน้อย 1 ชั่วโมงค่ะ', size: 'xs', color: MUTED, wrap: true, margin: 'md' },
+    ], [
+      settings.map_url ? uriButton('📍 นำทางไปร้าน', settings.map_url, true) : null,
+      uriButton('ดูรายละเอียดคิว', liffUrl(env, { p: 'pay', code: b.code })),
+    ].filter(Boolean)),
+  };
+}
+
+/** ขอบคุณหลังใช้บริการ + ชวนรีวิว */
+export function thankYouFlex(env, b, settings = {}, stamps = 0) {
+  const req = settings.stamps_required || 10;
+  const stampLine = b.use_reward
+    ? 'ใช้สิทธิ์ฟรีจากแต้มสะสมเรียบร้อยค่ะ'
+    : stamps >= req ? `🎁 ครบ ${req} แต้มแล้ว! ครั้งหน้าใช้สิทธิ์ฟรี 1 ทรงได้เลย` : `💗 แต้มสะสม ${stamps}/${req} · อีก ${req - stamps} ครั้งรับฟรี 1 ทรง`;
+  return {
+    type: 'flex',
+    altText: 'ขอบคุณที่มาใช้บริการค่ะ 💜',
+    contents: bubble(ROSE, 'ขอบคุณที่มาใช้บริการค่ะ 💜', settings.shop_name || '', [
+      { type: 'text', text: stampLine, size: 'sm', wrap: true, weight: 'bold' },
+      settings.review_url
+        ? { type: 'text', text: 'ถ้าชอบผลงาน รบกวนช่วยรีวิวร้านบน Google ให้หน่อยนะคะ ช่วยร้านเล็ก ๆ ได้มากเลย 🙏', size: 'sm', color: MUTED, wrap: true, margin: 'md' }
+        : null,
+    ].filter(Boolean), [
+      settings.review_url ? uriButton('⭐ รีวิวร้านบน Google', settings.review_url, true) : null,
+      uriButton('จองคิวครั้งถัดไป', liffUrl(env)),
+    ].filter(Boolean)),
+  };
+}
+
 export function adminNotice(b, kind) {
   const head = {
     new: '🆕 มีคิวใหม่ (รอมัดจำ)',

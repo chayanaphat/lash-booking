@@ -3,7 +3,7 @@ import {
   PUBLIC_SETTING_KEYS, adminIds, envAdminIds, getBookingByCode, getHolidays, getHours, getImage, getPromotions,
   getSettings, getStyles, isAdmin, parseBooking, parsePromo, saveImage, saveSettings, upsertUser,
 } from './db.js';
-import { buildQuote, cancelOwn, changeStatus, createBooking, expirePending, processSlip, slotsFor } from './bookings.js';
+import { buildQuote, cancelOwn, changeStatus, createBooking, expirePending, processSlip, sendReminders, slotsFor } from './bookings.js';
 import { userFromRequest } from './line.js';
 import { handleWebhook } from './webhook.js';
 import {
@@ -34,7 +34,7 @@ export default {
     return cors(res, env);
   },
   async scheduled(_evt, env, ctx) {
-    ctx.waitUntil(expirePending(env));
+    ctx.waitUntil(Promise.all([expirePending(env), sendReminders(env)]));
   },
 };
 

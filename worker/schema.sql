@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   slip_amount     REAL,
   slip_note       TEXT NOT NULL DEFAULT '',
   admin_note      TEXT NOT NULL DEFAULT '',
+  reminded_at     TEXT,                 -- เวลาที่ส่งเตือนนัดล่วงหน้าแล้ว
   created_at      TEXT NOT NULL,
   updated_at      TEXT NOT NULL
 );
@@ -133,3 +134,4 @@ WHERE (SELECT COUNT(*) FROM promotions) = 1;
 -- ---------- migration (ฐานข้อมูลที่สร้างก่อนมีบริการเสริม) ----------
 -- ALTER TABLE styles ADD COLUMN category TEXT NOT NULL DEFAULT 'ต่อขนตา (เลือกทรง)';
 -- ALTER TABLE styles ADD COLUMN kind TEXT NOT NULL DEFAULT 'main';
+-- ALTER TABLE bookings ADD COLUMN reminded_at TEXT;

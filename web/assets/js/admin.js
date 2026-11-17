@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1794893892';
+} from './core.js?v=1794894413';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -471,13 +471,16 @@ async function settings() {
       <b>แจ้งเตือน LINE</b>
       <label class="switch mt" style="display:flex"><input type="checkbox" data-kb="notify_admins" ${s.notify_admins ? 'checked' : ''}> แจ้งแอดมินเมื่อมีคิวใหม่ / สลิปรอตรวจ</label>
       <label class="switch mt" style="display:flex"><input type="checkbox" data-kb="notify_customer" ${s.notify_customer ? 'checked' : ''}> แจ้งลูกค้าเมื่อแอดมินยืนยัน/ปฏิเสธ/ยกเลิก</label>
-      <div class="tiny muted">การแจ้งเตือนแบบ push ใช้โควต้าข้อความฟรีของ LINE OA ต่อเดือน (ข้อความตอบกลับในแชทไม่นับ)</div>
+      <label class="switch mt" style="display:flex"><input type="checkbox" data-kb="review_request" ${s.review_request ? 'checked' : ''}> ส่งข้อความขอบคุณ + ชวนรีวิว Google เมื่อกด "มาใช้บริการแล้ว"</label>
+      <label class="switch mt" style="display:flex"><input type="checkbox" data-kb="remind_day_before" ${s.remind_day_before ? 'checked' : ''}> เตือนนัดลูกค้าล่วงหน้า 1 วัน พร้อมแผนที่</label>
+      <div class="grid2">${f('remind_hour', 'ส่งเตือนเวลา (ชั่วโมง 0–23)', 'number')}<div></div></div>
+      <div class="tiny muted mt">การแจ้งเตือนแบบ push ใช้โควต้าข้อความฟรีของ LINE OA ต่อเดือน (ข้อความตอบกลับในแชทไม่นับ) · ข้อความ 1 ครั้งต่อลูกค้านับเป็น 1 ข้อความ</div>
     </div>
     <button class="btn mt" id="save">บันทึกการตั้งค่า</button>
 
     <div class="card mt2">
       <b>Rich menu ของ LINE OA</b>
-      <img src="assets/richmenu.jpg?v=1794893892" style="border-radius:10px;margin-top:10px" alt="">
+      <img src="assets/richmenu.jpg?v=1794894413" style="border-radius:10px;margin-top:10px" alt="">
       <div class="tiny muted mt">กดเพื่อตั้งเมนู จองคิว / โปรโมชั่น / แต้มสะสม เป็นเมนูหลักของ OA (แทนเมนูเดิม)</div>
       <button class="btn ghost mt" id="richmenu">ติดตั้ง Rich menu</button>
     </div>
@@ -508,7 +511,7 @@ async function settings() {
     if (!confirm('ตั้ง Rich menu นี้เป็นเมนูหลักของ LINE OA?')) return;
     e.target.disabled = true;
     try {
-      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1794893892', location.href).href } });
+      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1794894413', location.href).href } });
       toast('ติดตั้ง Rich menu แล้ว ✅ เปิดแชท OA เพื่อดู');
     } catch (err) {
       toast(err.message === 'line_token_missing' ? 'ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Cloudflare' : errText(err) + ' ' + (err.data?.detail || ''), 5000);

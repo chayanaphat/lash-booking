@@ -1,8 +1,8 @@
 import {
   STATUS, addDays, api, baht, bkkTime, dayName, errText, esc, imgUrl, initLiff, loadImage, monthShort,
   profile, promoRange, promoText, readSlipQR, thaiDate, toast, weekday,
-} from './core.js?v=1794893892';
-import { promptPayPayload } from './promptpay.js?v=1794893892';
+} from './core.js?v=1794894413';
+import { promptPayPayload } from './promptpay.js?v=1794894413';
 
 const $app = document.getElementById('app');
 const $bar = document.getElementById('bar');

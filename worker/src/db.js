@@ -22,6 +22,9 @@ export const DEFAULT_SETTINGS = {
   stamps_required: 10,
   notify_admins: 1, // push แจ้งแอดมินเมื่อมีคิวใหม่/รอตรวจสลิป (ใช้โควต้าข้อความ)
   notify_customer: 1, // push แจ้งลูกค้าเมื่อแอดมินยืนยัน/ปฏิเสธสลิป
+  review_request: 1, // push ขอบคุณ + ชวนรีวิว Google เมื่อกด "มาใช้บริการแล้ว"
+  remind_day_before: 1, // push เตือนนัดล่วงหน้า 1 วัน พร้อมแผนที่
+  remind_hour: 18, // เวลาที่ส่งเตือน (ชั่วโมง, เวลาไทย)
   policy_text: 'มัดจำ 100 บาท (ที่เหลือชำระวันทำ)',
 };
 const NUMERIC = new Set(
