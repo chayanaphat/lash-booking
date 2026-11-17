@@ -417,8 +417,7 @@ on('POST', '/api/admin/richmenu', 'admin', async ({ env, req }) => {
     size: { width: 2500, height: 843 }, selected: true, name: 'lash-booking-main', chatBarText: 'เมนูจองคิว',
     areas: [
       { bounds: { x: 0, y: 0, width: 1250, height: 843 }, action: { type: 'uri', label: 'จองคิว', uri: liff() } },
-      { bounds: { x: 1250, y: 0, width: 1250, height: 421 }, action: { type: 'uri', label: 'โปรโมชั่น', uri: liff('?p=promos') } },
-      { bounds: { x: 1250, y: 421, width: 1250, height: 422 }, action: { type: 'uri', label: 'แต้มสะสม', uri: liff('?p=my') } },
+      { bounds: { x: 1250, y: 0, width: 1250, height: 843 }, action: { type: 'uri', label: 'แต้มสะสม', uri: liff('?p=my') } },
     ],
   };
   const list = await (await fetch('https://api.line.me/v2/bot/richmenu/list', { headers: auth })).json();

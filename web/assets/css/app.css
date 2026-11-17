@@ -284,3 +284,11 @@ a.btn { display: inline-block; text-align: center; text-decoration: none; }
 .friendbox .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .friendbox .mt-s { margin-top: 10px; }
 .btn.line { background: #06c755; color: #fff; }
+
+/* โปรโมชันบนการ์ดทรง */
+.style .promo-rb { position: absolute; top: 0; left: 0; z-index: 1; background: #d93636; color: #fff; font-size: 12px; font-weight: 700; padding: 5px 11px 6px 9px; border-radius: 0 0 12px 0; box-shadow: 0 3px 8px rgba(217, 54, 54, .3); }
+.style .p.sale { color: #d93636; font-weight: 700; }
+.style .p.sale .strike { font-size: 12px; }
+.promo-note { font-size: 11px; font-weight: 600; color: #d93636; }
+.promo-chip { align-self: flex-start; font-size: 11px; font-weight: 700; color: #c02c2c; background: #fde7e7; border-radius: 999px; padding: 2px 8px; }
+.save { font-size: 12px; font-weight: 600; color: var(--ok); }

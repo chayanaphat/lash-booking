@@ -1,9 +1,9 @@
 import {
   STATUS, addDays, api, baht, bkkTime, dayName, errText, esc, imgUrl, initLiff, loadImage, monthShort,
-  profile, promoRange, promoText, readSlipQR, thaiDate, toast, weekday,
-} from './core.js?v=1794936931';
-import { CONFIG } from './config.js?v=1794936931';
-import { promptPayPayload } from './promptpay.js?v=1794936931';
+  profile, readSlipQR, thaiDate, toast, weekday,
+} from './core.js?v=1794939095';
+import { CONFIG } from './config.js?v=1794939095';
+import { promptPayPayload } from './promptpay.js?v=1794939095';
 
 const $app = document.getElementById('app');
 const $bar = document.getElementById('bar');
@@ -35,7 +35,6 @@ const state = {
     const p = qs.get('p');
     if (p === 'pay' && qs.get('code')) location.hash = '#/pay/' + qs.get('code');
     else if (p === 'my') location.hash = '#/my';
-    else if (p === 'promos') location.hash = '#/promos';
     window.addEventListener('hashchange', render);
     // กลับมาจากหน้าเพิ่มเพื่อน → เช็คใหม่แล้วซ่อนแถบ
     document.addEventListener('visibilitychange', () => {
@@ -55,7 +54,6 @@ function render() {
   if (view === 'book') return state.cart.length ? viewBook() : go('#/');
   if (view === 'pay') return viewPay(arg);
   if (view === 'my') return viewMy();
-  if (view === 'promos') return viewPromos();
   return viewHome();
 }
 // ------------------------------------------------------------------ เพื่อน LINE OA
@@ -137,12 +135,11 @@ function viewHome() {
   const { settings, styles, promotions } = state.info;
   const u = state.me.user;
   const req = state.me.stamps_required;
-  const nowPromos = promotions.filter((p) => !p.start_date || p.start_date <= state.info.today);
 
   $app.innerHTML = `
     <section class="hero">
       <div class="hero-top">
-        <h1 class="wordmark"><img src="assets/logo-wordmark.png?v=1794936931" alt="${esc(settings.shop_name)}"></h1>
+        <h1 class="wordmark"><img src="assets/logo-wordmark.png?v=1794939095" alt="${esc(settings.shop_name)}"></h1>
         <div class="hero-user">
           <div class="tiny muted">สวัสดีค่ะ</div>
           <div class="small hero-name">${esc(u.display_name || profile?.displayName || '')}</div>
@@ -152,7 +149,6 @@ function viewHome() {
       <div class="chips">
         <button class="chip-btn" data-go="#/my">💗 ${u.stamps}/${req} แต้ม</button>
         <button class="chip-btn" data-go="#/my">📅 คิวของฉัน</button>
-        ${promotions.length ? `<button class="chip-btn" data-go="#/promos">🎀 โปร</button>` : ''}
         ${state.me.is_admin ? `<a class="chip-btn" href="admin.html${location.search.includes('dev=') ? location.search : ''}" style="text-decoration:none;color:inherit">⚙️ แอดมิน</a>` : ''}
       </div>
       ${(state.info.reviews || []).length ? `
@@ -162,9 +158,6 @@ function viewHome() {
             <span class="nm">${esc(a.name)}</span>
           </button>`).join('')}</div>` : ''}
     </section>
-
-    ${nowPromos.map((p) => `
-      <div class="promo"><div class="t">🎀 ${esc(p.name)}</div><div class="d">${esc(promoText(p, styles))}${promoRange(p) ? ' · ' + esc(promoRange(p)) : ''}</div></div>`).join('')}
 
     ${u.stamps >= req ? `<div class="card mt" style="background:#fff">🎁 <b>คุณมีสิทธิ์ต่อขนตาฟรี 1 ทรง!</b><div class="small muted">เลือกใช้สิทธิ์ได้ในขั้นตอนเลือกวันเวลา${redeemNames() ? ` · ใช้ได้กับ ${esc(redeemNames())}` : ''}</div></div>` : ''}
 
@@ -305,17 +298,63 @@ function groupByCategory(list) {
   return [...map.entries()];
 }
 
+// ------------------------------------------------------------------ โปรโมชันบนการ์ดทรง (ตรรกะเดียวกับ worker/src/pricing.js)
+function promoPrice(p, s) {
+  const listed = p.style_ids && p.style_ids.length;
+  if (listed && !p.style_ids.map(Number).includes(Number(s.id))) return null;
+  if (!listed && p.type !== 'fixed_price' && s.kind === 'addon') return null;
+  if (p.type === 'fixed_price') {
+    const v = p.fixed_prices?.[s.id] ?? p.fixed_prices?.[String(s.id)];
+    return v == null || v === '' ? null : Math.max(0, Number(v));
+  }
+  if (p.type === 'percent') return Math.max(0, Math.round((s.price * (100 - (p.discount || 0))) / 100));
+  return Math.max(0, s.price - (p.discount || 0));
+}
+const shortDate = (d) => `${Number(d.slice(8))} ${monthShort(d)}`;
+const daysLeft = (d) => Math.round((Date.parse(d) - Date.parse(state.info.today)) / 86400000);
+/** best: โปรที่ใช้ได้ทันที (ราคาบนการ์ด) · cond: โปรที่มีเงื่อนไข (ต้องมาหลายคน / ยังไม่เริ่ม) */
+function stylePromo(s, people = 1) {
+  const today = state.info.today;
+  let best = null;
+  const cond = [];
+  for (const p of state.info.promotions || []) {
+    const price = promoPrice(p, s);
+    if (price == null || price >= s.price) continue;
+    const need = p.min_people || 1;
+    const future = p.start_date && p.start_date > today;
+    if (need <= people && !future) {
+      if (!best || price < best.price) best = { p, price };
+    } else cond.push({ p, price, people: need, future });
+  }
+  // ไม่ต้องโชว์โปรมีเงื่อนไขที่ถูกน้อยกว่าราคาโปรที่ได้อยู่แล้ว
+  return { best, cond: cond.filter((c) => !best || c.price < best.price) };
+}
+const effPrice = (s, people = 1) => stylePromo(s, people).best?.price ?? s.price;
+function promoUntil(p) {
+  if (!p.end_date) return 'ไม่มีกำหนดหมดเขต';
+  const n = daysLeft(p.end_date);
+  return n <= 0 ? 'วันนี้วันสุดท้าย' : n <= 3 ? `เหลือ ${n} วัน` : `ถึง ${shortDate(p.end_date)}`;
+}
+
 function styleCard(s) {
   const n = state.cart.filter((x) => x === s.id).length;
   const addon = s.kind === 'addon';
+  const { best, cond } = stylePromo(s);
+  const stamp = `${s.stamps > 0 ? ` <span class="stampbadge">💗 +${s.stamps} แต้ม</span>` : ''}${Number(s.redeemable) && state.me.user.stamps >= state.me.stamps_required ? ` <span class="stampbadge gift">🎁 แลกฟรีได้</span>` : ''}`;
+  const price = best
+    ? `<div class="p sale">${baht(best.price)} <span class="strike">${baht(s.price)}</span>${stamp}</div>
+       <div class="promo-note">ราคาพิเศษ · ${promoUntil(best.p)}</div>`
+    : `<div class="p">${baht(s.price)}${stamp}</div>`;
+  const chips = cond.map((c) => `<span class="promo-chip">🔥 ${c.people > 1 ? `มา ${c.people} คน ` : ''}${c.future ? `เริ่ม ${shortDate(c.p.start_date)} ` : ''}ลด ${baht(s.price - c.price)}</span>`).join('');
   return `
     <div class="style rel ${n ? 'sel' : ''} ${addon ? 'addon' : ''}">
       ${s.image_id ? `<img class="ph" src="${imgUrl(s.image_id)}" alt="${esc(s.name)}" loading="lazy">` : `<div class="ph">${addon ? '✨' : '👁️'}</div>`}
+      ${best ? `<span class="promo-rb">🔥 ลด ${baht(s.price - best.price)}</span>` : ''}
       ${n ? `<span class="badge-n">${n}</span>` : ''}
       <div class="b">
         <div class="n">${esc(s.name)}</div>
         ${s.description ? `<div class="tiny muted">${esc(s.description)}</div>` : ''}
-        <div class="p">${baht(s.price)}${s.stamps > 0 ? ` <span class="stampbadge">💗 +${s.stamps} แต้ม</span>` : ''}${Number(s.redeemable) && state.me.user.stamps >= state.me.stamps_required ? ` <span class="stampbadge gift">🎁 แลกฟรีได้</span>` : ''}</div>
+        ${price}${chips}
         <button class="btn sm ghost add" data-add="${s.id}">${addon ? '+ เพิ่มบริการนี้' : '+ เลือก'}</button>
       </div>
     </div>`;
@@ -324,14 +363,16 @@ function styleCard(s) {
 function renderCartBar() {
   if (!state.cart.length) return $bar.classList.add('hidden');
   $bar.classList.remove('hidden');
-  const total = state.cart.reduce((a, id) => a + (styleById(id)?.price || 0), 0);
+  const normal = state.cart.reduce((a, id) => a + (styleById(id)?.price || 0), 0);
+  const ppl = Math.max(1, peopleCount());
+  const total = state.cart.reduce((a, id) => a + (styleById(id) ? effPrice(styleById(id), ppl) : 0), 0);
   $bar.innerHTML = `
     <div class="in" style="flex-direction:column;align-items:stretch;gap:10px">
       <div class="cart">
         ${((labels) => state.cart.map((id, i) => `<span class="c">${labels[i]}: ${esc(styleById(id)?.name)} <button data-rm="${i}" aria-label="ลบ">×</button></span>`).join(''))(itemLabels(state.cart.map((id) => ({ kind: styleById(id)?.kind }))))}
       </div>
       <div class="row">
-        <div class="grow"><div class="tiny muted">${Math.max(1, peopleCount())} คน · ราคาปกติ</div><b>${baht(total)}</b></div>
+        <div class="grow"><div class="tiny muted">${Math.max(1, peopleCount())} คน</div><b>${baht(total)}</b>${normal > total ? ` <span class="save">ประหยัด ${baht(normal - total)}</span>` : ''}</div>
         <button class="btn" id="next">เลือกวันเวลา →</button>
       </div>
     </div>`;
@@ -463,17 +504,17 @@ async function loadQuote() {
     el.innerHTML = `
       ${((labels) => q.items.map((it, i) => `
         <div class="line"><div>${labels[i]} · ${esc(it.name)}
-          ${it.promotion ? `<div><span class="tag">${esc(it.promotion.name)}</span></div>` : ''}
+          ${it.promotion ? `<div class="promo-note">🔥 ${esc(it.promotion.name)}</div>` : ''}
           ${it.reward ? `<div><span class="tag" style="background:#fff3d6;color:#a2742a">ฟรีจากแต้มสะสม</span></div>` : ''}</div>
           <div class="center">${it.price !== it.base_price ? `<span class="strike small">${baht(it.base_price)}</span><br>` : ''}<b>${baht(it.price)}</b></div></div>`).join(''))(itemLabels(q.items))}
-      ${q.discount ? `<div class="line small"><span class="muted">ส่วนลด</span><span style="color:var(--ok)">−${baht(q.discount)}</span></div>` : ''}
+      ${q.discount ? `<div class="line small"><span style="color:var(--ok);font-weight:600">ส่วนลดโปรโมชัน</span><span style="color:var(--ok);font-weight:600">−${baht(q.discount)}</span></div>` : ''}
       <div class="line total"><span>ยอดรวม</span><span>${baht(q.total)}</span></div>
       ${q.stamps_earned ? `<div class="line small"><span class="muted">แต้มที่จะได้</span><span style="color:var(--rose)">💗 +${q.stamps_earned} แต้ม</span></div>` : ''}
       <div class="line small"><span class="muted">มัดจำวันนี้</span><b style="color:var(--rose)">${baht(q.deposit_amount)}</b></div>
       <div class="line small"><span class="muted">ชำระที่ร้าน</span><span>${baht(q.total - q.deposit_amount)}</span></div>
       ${q.hints.map((h) => `<div class="tiny mt" style="color:var(--rose)">💡 มากับเพื่อนอีก ${h.need_people - Math.max(1, peopleCount())} คน ได้โปร "${esc(h.name)}"</div>`).join('')}
     `;
-    $bar.querySelector('#bartotal').textContent = `${baht(q.total)} · มัดจำ ${baht(q.deposit_amount)}`;
+    $bar.querySelector('#bartotal').innerHTML = `${baht(q.total)} · มัดจำ ${baht(q.deposit_amount)}${q.discount ? ` <span class="save">ประหยัด ${baht(q.discount)}</span>` : ''}`;
   } catch (e) {
     el.innerHTML = `<div class="empty">${esc(errText(e))}</div>`;
   }
@@ -704,19 +745,6 @@ async function viewMy() {
 }
 
 // ------------------------------------------------------------------ promotions
-function viewPromos() {
-  const { promotions, styles, today } = state.info;
-  $app.innerHTML = `
-    <button class="back" data-go="#/">← หน้าแรก</button>
-    <div class="section-title">โปรโมชั่น</div>
-    ${promotions.length ? promotions.map((p) => `
-      <div class="promo"><div class="t">🎀 ${esc(p.name)} ${p.start_date && p.start_date > today ? '<span class="tag" style="background:#fff">เร็ว ๆ นี้</span>' : ''}</div>
-      <div class="d">${esc(promoText(p, styles))}</div>${promoRange(p) ? `<div class="d">${esc(promoRange(p))}</div>` : ''}</div>`).join('') : '<div class="empty">ยังไม่มีโปรโมชั่น</div>'}
-    <button class="btn mt2" data-go="#/">จองคิวเลย</button>
-  `;
-  bindGo();
-}
-
 function bindGo() {
   $app.querySelectorAll('[data-go]').forEach((el) => el.addEventListener('click', () => go(el.dataset.go)));
 }
