@@ -177,7 +177,7 @@ dialog .df { padding: 12px 18px; border-top: 1px solid var(--line); display: fle
 .code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: #f3ecea; padding: 2px 6px; border-radius: 6px; word-break: break-all; }
 .daygroup { font-weight: 600; margin: 18px 0 8px; color: var(--muted); font-size: 14px; }
 dialog .df .btn { width: auto; flex: 1; white-space: nowrap; }
-.grid2 { align-items: end; }
+.grid2 { align-items: end; column-gap: 10px; }
 .grid2 > * { min-width: 0; }
 .input { min-width: 0; }
 
@@ -229,3 +229,6 @@ input[type="time"].input::-webkit-date-and-time-value {
 .row > .input, .row > select.input { min-width: 0; flex: 1 1 0; }
 
 .hours-row select.input { padding: 10px 6px; -webkit-appearance: none; appearance: none; text-align: center; background: #fff; }
+
+.field { min-width: 0; }
+.card > b:first-child { display: block; margin-bottom: 2px; }

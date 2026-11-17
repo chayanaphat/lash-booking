@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1794891458';
+} from './core.js?v=1794891661';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -441,7 +441,7 @@ async function users(q = st.q || '') {
 // =================================================================== settings
 async function settings() {
   const [{ settings: s, slip_auto }, adm] = await Promise.all([api('/api/admin/settings'), api('/api/admin/admins')]);
-  const f = (k, label, type = 'text', hint = '') => `<label class="f">${label}</label><input class="input" data-k="${k}" type="${type}" value="${esc(s[k])}">${hint ? `<div class="tiny muted">${hint}</div>` : ''}`;
+  const f = (k, label, type = 'text', hint = '') => `<div class="field"><label class="f">${label}</label><input class="input" data-k="${k}" type="${type}" ${type === 'number' ? 'inputmode="numeric" min="0"' : ''} value="${esc(s[k])}">${hint ? `<div class="tiny muted" style="margin-top:4px">${hint}</div>` : ''}</div>`;
   $view().innerHTML = `
     <div class="card">
       <b>ข้อมูลร้าน</b>
