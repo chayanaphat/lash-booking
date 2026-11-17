@@ -66,7 +66,19 @@ export async function saveSettings(env, patch) {
 }
 
 // ---------- styles / promotions ----------
+// styles.stamps = แต้มที่ได้ต่อ 1 ครั้งที่ทำบริการนี้ (0 = ไม่ได้แต้ม) — เพิ่มคอลัมน์ให้อัตโนมัติถ้ายังไม่มี
+let stylesStampsReady = false;
+export async function ensureStyleStamps(env) {
+  if (stylesStampsReady) return;
+  try {
+    await env.DB.prepare('ALTER TABLE styles ADD COLUMN stamps INTEGER NOT NULL DEFAULT 0').run();
+  } catch (e) {
+    if (!/duplicate column/i.test(String(e?.message || e))) throw e;
+  }
+  stylesStampsReady = true;
+}
 export async function getStyles(env, { activeOnly = false } = {}) {
+  await ensureStyleStamps(env);
   const sql = `SELECT * FROM styles ${activeOnly ? 'WHERE active = 1' : ''} ORDER BY sort, id`;
   const { results } = await env.DB.prepare(sql).all();
   return results;

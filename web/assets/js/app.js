@@ -1,8 +1,8 @@
 import {
   STATUS, addDays, api, baht, bkkTime, dayName, errText, esc, imgUrl, initLiff, loadImage, monthShort,
   profile, promoRange, promoText, readSlipQR, thaiDate, toast, weekday,
-} from './core.js?v=1794925398';
-import { promptPayPayload } from './promptpay.js?v=1794925398';
+} from './core.js?v=1794927814';
+import { promptPayPayload } from './promptpay.js?v=1794927814';
 
 const $app = document.getElementById('app');
 const $bar = document.getElementById('bar');
@@ -55,6 +55,7 @@ function render() {
 const go = (h) => (location.hash = h);
 const styleById = (id) => state.info.styles.find((s) => s.id === Number(id));
 const isAddon = (id) => styleById(id)?.kind === 'addon';
+const stampStyleNames = () => (state.info?.styles || []).filter((s) => s.stamps > 0).map((s) => `${s.name}${s.stamps > 1 ? ` (+${s.stamps})` : ''}`).join(', ');
 const peopleCount = () => state.cart.filter((id) => !isAddon(id)).length;
 // บริการเสริมแต่ละอย่างมีได้ไม่เกินจำนวนคน (คนละ 1) — ตัดส่วนเกินออกเมื่อลบคน
 function trimAddons() {
@@ -159,7 +160,7 @@ function styleCard(s) {
       <div class="b">
         <div class="n">${esc(s.name)}</div>
         ${s.description ? `<div class="tiny muted">${esc(s.description)}</div>` : ''}
-        <div class="p">${baht(s.price)}</div>
+        <div class="p">${baht(s.price)}${s.stamps > 0 ? ` <span class="stampbadge">💗 +${s.stamps} แต้ม</span>` : ''}</div>
         <button class="btn sm ghost add" data-add="${s.id}">${addon ? '+ เพิ่มบริการนี้' : '+ เลือก'}</button>
       </div>
     </div>`;
@@ -206,7 +207,10 @@ function openDates() {
 async function viewBook() {
   const dates = openDates();
   if (!state.date || !dates.find((d) => d.date === state.date && d.open)) state.date = dates.find((d) => d.open)?.date || null;
-  const canReward = state.me.user.stamps >= state.me.stamps_required;
+  const eligible = state.cart.some((id) => (styleById(id)?.stamps || 0) > 0);
+  const hasStamps = state.me.user.stamps >= state.me.stamps_required;
+  const canReward = hasStamps && eligible;
+  if (!canReward) state.useReward = false;
 
   $app.innerHTML = `
     <button class="back" data-go="#/">← กลับไปเลือกทรง</button>
@@ -231,7 +235,8 @@ async function viewBook() {
     </div>
     ${canReward ? `
       <label class="check mt"><input type="checkbox" id="reward" ${state.useReward ? 'checked' : ''}/>
-        <div><b>🎁 ใช้สิทธิ์ฟรี 1 ทรง</b><div class="tiny muted">ใช้ ${state.me.stamps_required} แต้ม (คุณมี ${state.me.user.stamps})</div></div></label>` : ''}
+        <div><b>🎁 ใช้สิทธิ์ฟรี 1 ทรง</b><div class="tiny muted">ใช้ ${state.me.stamps_required} แต้ม (คุณมี ${state.me.user.stamps})</div></div></label>`
+      : hasStamps ? `<div class="card mt small muted">🎁 คุณมีสิทธิ์ฟรี 1 ทรง — ใช้ได้กับทรงที่มี 💗 แต้ม (${esc(stampStyleNames())})</div>` : ''}
 
     <div class="section-title">สรุปราคา</div>
     <div class="card" id="summary"><div class="spinner"></div></div>
@@ -306,6 +311,7 @@ async function loadQuote() {
           <div class="center">${it.price !== it.base_price ? `<span class="strike small">${baht(it.base_price)}</span><br>` : ''}<b>${baht(it.price)}</b></div></div>`).join(''))(itemLabels(q.items))}
       ${q.discount ? `<div class="line small"><span class="muted">ส่วนลด</span><span style="color:var(--ok)">−${baht(q.discount)}</span></div>` : ''}
       <div class="line total"><span>ยอดรวม</span><span>${baht(q.total)}</span></div>
+      ${q.stamps_earned ? `<div class="line small"><span class="muted">แต้มที่จะได้</span><span style="color:var(--rose)">💗 +${q.stamps_earned} แต้ม</span></div>` : ''}
       <div class="line small"><span class="muted">มัดจำวันนี้</span><b style="color:var(--rose)">${baht(q.deposit_amount)}</b></div>
       <div class="line small"><span class="muted">ชำระที่ร้าน</span><span>${baht(q.total - q.deposit_amount)}</span></div>
       ${q.hints.map((h) => `<div class="tiny mt" style="color:var(--rose)">💡 มากับเพื่อนอีก ${h.need_people - Math.max(1, peopleCount())} คน ได้โปร "${esc(h.name)}"</div>`).join('')}
@@ -523,7 +529,8 @@ async function viewMy() {
       <div class="stamps">
         ${Array.from({ length: req }, (_, i) => `<div class="stamp ${i < st ? 'on' : ''} ${i === req - 1 ? 'gift' : ''}">${i < st ? '💗' : i === req - 1 ? '🎁' : ''}</div>`).join('')}
       </div>
-      <div class="small mt" style="opacity:.85">${st >= req ? '🎁 ใช้สิทธิ์ต่อขนตาฟรี 1 ทรง ได้ในการจองครั้งถัดไป!' : `สะสมครบ ${req} ครั้ง รับฟรี 1 ทรง · อีก ${req - st} ครั้ง`}</div>
+      <div class="small mt" style="opacity:.85">${st >= req ? '🎁 ใช้สิทธิ์ต่อขนตาฟรี 1 ทรง ได้ในการจองครั้งถัดไป!' : `สะสมครบ ${req} แต้ม รับฟรี 1 ทรง · อีก ${req - st} แต้ม`}</div>
+      ${stampStyleNames() ? `<div class="tiny mt" style="opacity:.75">ได้แต้มจาก: ${esc(stampStyleNames())}</div>` : ''}
     </div>
 
     ${state.info.settings.review_url && bookings.some((b) => b.status === 'completed') ? `

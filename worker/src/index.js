@@ -1,6 +1,6 @@
 // Lash booking API — Cloudflare Worker
 import {
-  PUBLIC_SETTING_KEYS, adminIds, envAdminIds, ensureBlocks, getBlocks, notifyAdminIds, getBookingByCode, getHolidays, getHours, getImage, getPromotions,
+  PUBLIC_SETTING_KEYS, adminIds, envAdminIds, ensureBlocks, ensureStyleStamps, getBlocks, notifyAdminIds, getBookingByCode, getHolidays, getHours, getImage, getPromotions,
   getSettings, getStyles, isAdmin, parseBooking, parsePromo, saveImage, saveSettings, upsertUser,
 } from './db.js';
 import { buildQuote, cancelOwn, changeStatus, createBooking, expirePending, processSlip, sendReminders, slotsFor } from './bookings.js';
@@ -189,6 +189,7 @@ function styleInput(b) {
     active: b.active === false || b.active === 0 ? 0 : 1,
     category: str(b.category, 60) || 'บริการ',
     kind: b.kind === 'addon' ? 'addon' : 'main',
+    stamps: Math.min(10, Math.max(0, int(b.stamps, 0))),
   };
   if (!s.name || s.price < 0 || s.duration_min < 15) throw new HttpError(400, 'invalid_style');
   return s;
@@ -196,14 +197,16 @@ function styleInput(b) {
 on('GET', '/api/admin/styles', 'admin', async ({ env }) => json({ styles: await getStyles(env) }));
 on('POST', '/api/admin/styles', 'admin', async ({ env, req }) => {
   const s = styleInput(await readJson(req));
-  const r = await env.DB.prepare('INSERT INTO styles (name, description, price, duration_min, image_id, sort, active, category, kind) VALUES (?,?,?,?,?,?,?,?,?)')
-    .bind(s.name, s.description, s.price, s.duration_min, s.image_id, s.sort, s.active, s.category, s.kind).run();
+  await ensureStyleStamps(env);
+  const r = await env.DB.prepare('INSERT INTO styles (name, description, price, duration_min, image_id, sort, active, category, kind, stamps) VALUES (?,?,?,?,?,?,?,?,?,?)')
+    .bind(s.name, s.description, s.price, s.duration_min, s.image_id, s.sort, s.active, s.category, s.kind, s.stamps).run();
   return json({ id: r.meta.last_row_id }, 201);
 });
 on('PUT', '/api/admin/styles/:id', 'admin', async ({ env, req, params }) => {
   const s = styleInput(await readJson(req));
-  await env.DB.prepare('UPDATE styles SET name=?, description=?, price=?, duration_min=?, image_id=?, sort=?, active=?, category=?, kind=? WHERE id=?')
-    .bind(s.name, s.description, s.price, s.duration_min, s.image_id, s.sort, s.active, s.category, s.kind, int(params.id)).run();
+  await ensureStyleStamps(env);
+  await env.DB.prepare('UPDATE styles SET name=?, description=?, price=?, duration_min=?, image_id=?, sort=?, active=?, category=?, kind=?, stamps=? WHERE id=?')
+    .bind(s.name, s.description, s.price, s.duration_min, s.image_id, s.sort, s.active, s.category, s.kind, s.stamps, int(params.id)).run();
   return json({ ok: true });
 });
 on('DELETE', '/api/admin/styles/:id', 'admin', async ({ env, params }) => {

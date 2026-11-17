@@ -55,6 +55,7 @@ export function quote(styles, styleIds, promos, date, { useReward = false } = {}
       name: s.name,
       image_id: s.image_id || null,
       kind: s.kind || 'main',
+      stamps: Number(s.stamps) || 0,
       duration_min: s.duration_min || 120,
       base_price: s.price,
       price: best,
@@ -63,12 +64,13 @@ export function quote(styles, styleIds, promos, date, { useReward = false } = {}
     };
   });
 
-  if (useReward && items.length) {
+  // ใช้สิทธิ์ฟรี: ฟรีทรงที่แพงที่สุด เฉพาะทรงที่ได้แต้ม (stamps > 0)
+  if (useReward) {
     let idx = -1;
     items.forEach((it, i) => {
-      if (it.kind !== 'addon' && (idx < 0 || it.price > items[idx].price)) idx = i;
+      if (it.stamps > 0 && (idx < 0 || it.price > items[idx].price)) idx = i;
     });
-    if (idx < 0) idx = 0;
+    if (idx < 0) throw new Error('reward_not_eligible');
     items[idx] = { ...items[idx], price: 0, reward: true, promotion: null };
   }
 
@@ -81,7 +83,10 @@ export function quote(styles, styleIds, promos, date, { useReward = false } = {}
     .filter((p) => (p.min_people || 1) > people)
     .map((p) => ({ id: p.id, name: p.name, need_people: p.min_people }));
 
-  return { items, subtotal, discount: subtotal - total, total, duration_min, hints };
+  // แต้มที่จะได้เมื่อมาใช้บริการ (ทรงที่ใช้สิทธิ์ฟรีไม่ได้แต้ม)
+  const stamps_earned = items.reduce((a, i) => a + (i.reward ? 0 : i.stamps), 0);
+
+  return { items, subtotal, discount: subtotal - total, total, duration_min, stamps_earned, hints };
 }
 
 export function promoText(p, styles = {}) {

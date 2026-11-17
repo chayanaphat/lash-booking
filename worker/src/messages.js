@@ -168,9 +168,16 @@ export function reminderFlex(env, b, settings = {}) {
 /** ขอบคุณหลังใช้บริการ + ชวนรีวิว */
 export function thankYouFlex(env, b, settings = {}, stamps = 0) {
   const req = settings.stamps_required || 10;
-  const stampLine = b.use_reward
-    ? 'ใช้สิทธิ์ฟรีจากแต้มสะสมเรียบร้อยค่ะ'
-    : stamps >= req ? `🎁 ครบ ${req} แต้มแล้ว! ครั้งหน้าใช้สิทธิ์ฟรี 1 ทรงได้เลย` : `💗 แต้มสะสม ${stamps}/${req} · อีก ${req - stamps} ครั้งรับฟรี 1 ทรง`;
+  const items = b.items || [];
+  const earned = items.some((i) => 'stamps' in i)
+    ? items.reduce((a, i) => a + (i.reward ? 0 : Number(i.stamps) || 0), 0)
+    : b.use_reward ? 0 : 1;
+  const status = stamps >= req ? `🎁 ครบ ${req} แต้มแล้ว! ครั้งหน้าใช้สิทธิ์ฟรี 1 ทรงได้เลย` : `แต้มสะสม ${stamps}/${req} · อีก ${req - stamps} แต้มรับฟรี 1 ทรง`;
+  const stampLine = [
+    b.use_reward ? 'ใช้สิทธิ์ฟรีจากแต้มสะสมเรียบร้อยค่ะ' : '',
+    earned ? `💗 ครั้งนี้ได้ +${earned} แต้ม` : '',
+    status,
+  ].filter(Boolean).join('\n');
   return {
     type: 'flex',
     altText: 'ขอบคุณที่มาใช้บริการค่ะ 💜',

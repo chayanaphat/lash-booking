@@ -10,6 +10,13 @@ import { verifySlip } from './slip.js';
 import { computeSlots } from './slots.js';
 import { HttpError, addDays, bkkNow, fromMin, genCode, isDate, isTime, isoAfterMinutes, nowISO, str, toMin } from './util.js';
 
+/** แต้มที่ได้จากคิวนี้ — คิวเก่าก่อนมีแต้มตามทรง: 1 แต้ม (ยกเว้นครั้งที่ใช้สิทธิ์ฟรี) */
+export function stampsEarned(b) {
+  const items = b.items || [];
+  if (!items.some((i) => 'stamps' in i)) return b.use_reward ? 0 : 1;
+  return items.reduce((a, i) => a + (i.reward ? 0 : Number(i.stamps) || 0), 0);
+}
+
 export async function buildQuote(env, { date, style_ids, use_reward = false }, settings) {
   if (!isDate(date)) throw new HttpError(400, 'invalid_date');
   const ids = (style_ids || []).map(Number).filter(Boolean);
@@ -24,7 +31,13 @@ export async function buildQuote(env, { date, style_ids, use_reward = false }, s
   const counts = {};
   for (const id of ids) if (map[id].kind === 'addon') counts[id] = (counts[id] || 0) + 1;
   if (Object.values(counts).some((n) => n > Math.max(1, people))) throw new HttpError(400, 'too_many_addons');
-  const q = quote(map, ids, promos, date, { useReward: use_reward });
+  let q;
+  try {
+    q = quote(map, ids, promos, date, { useReward: use_reward });
+  } catch (e) {
+    if (e.message === 'reward_not_eligible') throw new HttpError(400, 'reward_not_eligible');
+    throw e;
+  }
   q.deposit_amount = Math.min(settings.deposit_amount, q.total);
   return q;
 }
@@ -158,10 +171,10 @@ export async function changeStatus(env, code, action, { note = '', date, time } 
     case 'complete':
       if (b.status !== 'confirmed') throw new HttpError(409, 'invalid_transition');
       stmts.push(env.DB.prepare(`UPDATE bookings SET status='completed', admin_note=?, updated_at=? WHERE code=?`).bind(note, now, code));
-      // สะสม 1 แต้มต่อการมาใช้บริการ 1 ครั้ง (ครั้งที่ใช้สิทธิ์ฟรีไม่นับแต้ม)
+      // สะสมแต้มตามทรงที่ทำ (ตั้งในหน้าแอดมิน · ทรงที่ใช้สิทธิ์ฟรีไม่ได้แต้ม)
       stmts.push(env.DB.prepare(
         `UPDATE users SET stamps = stamps + ?, total_visits = total_visits + 1, updated_at = datetime('now') WHERE line_user_id = ?`,
-      ).bind(b.use_reward ? 0 : 1, b.line_user_id));
+      ).bind(stampsEarned(b), b.line_user_id));
       break;
     case 'cancel':
       if (['cancelled', 'completed'].includes(b.status)) throw new HttpError(409, 'invalid_transition');
