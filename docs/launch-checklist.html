@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kingyo Eyelash — รายการที่เหลือก่อนเปิดระบบจอง</title>
+<link rel="icon" href="logo-square.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#fbf3ea;--card:#fff;--ink:#3e2a4a;--muted:#8a7a90;--rose:#8e5ba8;--rose-2:#c595d3;--gold:#f28a3c;--line:#efe4f2;
+        --red:#d9534f;--amber:#e0a100;--green:#2e9e5b}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans Thai","Sukhumvit Set","Noto Sans Thai",system-ui,sans-serif;line-height:1.6}
+  main{max-width:860px;margin:0 auto;padding:32px 20px 64px}
+  header{display:flex;align-items:center;gap:18px;margin-bottom:8px}
+  header img{width:72px;height:72px;border-radius:18px;box-shadow:0 6px 16px rgba(70,40,90,.15)}
+  h1{margin:0;font-size:26px;line-height:1.25}
+  .sub{color:var(--muted);margin:2px 0 0;font-size:15px}
+  .progress{margin:22px 0 28px;background:var(--card);border-radius:16px;padding:16px 18px;box-shadow:0 2px 10px rgba(70,40,90,.06)}
+  .bar{height:10px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:8px}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--rose),var(--gold));width:0;transition:width .3s}
+  section{margin:26px 0}
+  h2{font-size:19px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .tag{font-size:12px;font-weight:600;padding:2px 10px;border-radius:99px}
+  .t-red{background:#d9534f1a;color:var(--red)} .t-amber{background:#e0a1001f;color:#9a6f00}
+  .t-green{background:#2e9e5b1a;color:var(--green)} .t-done{background:#8e5ba81a;color:var(--rose)}
+  ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+  li{background:var(--card);border-radius:14px;padding:14px 16px;box-shadow:0 2px 10px rgba(70,40,90,.06);display:flex;gap:12px}
+  li input{margin-top:5px;width:18px;height:18px;accent-color:var(--rose);flex:0 0 18px}
+  .n{font-weight:700;color:var(--gold);min-width:26px}
+  .t{font-weight:600}
+  .d{color:var(--muted);font-size:14.5px;margin-top:2px}
+  .d ul{gap:2px;margin-top:4px}
+  .d ul li{background:none;box-shadow:none;padding:0 0 0 14px;display:block;position:relative;border-radius:0}
+  .d ul li::before{content:"•";position:absolute;left:0;color:var(--rose-2)}
+  li.checked .t{text-decoration:line-through;color:var(--muted)}
+  .who{font-size:12px;color:var(--rose);font-weight:600;margin-left:6px}
+  .warn{color:var(--red);font-weight:600}
+  .links{background:var(--card);border-radius:14px;padding:14px 18px;box-shadow:0 2px 10px rgba(70,40,90,.06);font-size:14.5px}
+  .links div{display:flex;gap:10px;flex-wrap:wrap;padding:3px 0}
+  .links b{min-width:150px}
+  a{color:var(--rose)}
+  code{background:#f4eef6;border-radius:6px;padding:1px 6px;font-size:13px}
+  footer{color:var(--muted);font-size:13px;margin-top:30px}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="logo-square.jpg" alt="Kingyo Eyelash">
+    <div>
+      <h1>รายการที่เหลือก่อนเปิดระบบจอง</h1>
+      <p class="sub">ระบบจองคิวต่อขนตาผ่าน LINE · อัปเดต 17 พ.ย. 2569</p>
+    </div>
+  </header>
+
+  <div class="progress">
+    <b id="ptext">ความคืบหน้า</b>
+    <div class="bar"><i id="pbar"></i></div>
+  </div>
+
+  <section>
+    <h2>🔴 ต้องทำก่อนเปิดให้ลูกค้าใช้ <span class="tag t-red">สำคัญ</span></h2>
+    <ul>
+      <li><input type="checkbox" data-id="2"><span class="n">2</span><div>
+        <div class="t">ใส่ทรงขนตาจริงพร้อมรูป<span class="who">ร้าน</span></div>
+        <div class="d">หน้าแอดมิน → 👁️ ทรงขนตา: แก้ชื่อทรง A/B/C เป็นทรงจริง และอัปโหลดรูปผลงาน ตอนนี้ยังไม่มีรูปเลย</div>
+      </div></li>
+      <li><input type="checkbox" data-id="3"><span class="n">3</span><div>
+        <div class="t">เช็คค่าตั้งต้นให้ตรงกับร้าน<span class="who">ร้าน</span></div>
+        <div class="d"><ul>
+          <li>เวลาที่ใช้ของ ถอด / เติม / ลิฟติ้ง (ตอนนี้ 30 / 60 / 60 นาที)</li>
+          <li>จำนวนช่างที่รับพร้อมกัน (ตอนนี้ 1 คน)</li>
+          <li>กติกาแต้มสะสม (ตอนนี้ 10 ครั้ง ฟรี 1)</li>
+          <li>โปรโมชัน: ตอนนี้ไม่มีโปรที่เปิดใช้ เพิ่มได้ในแท็บ 🎀 โปรโมชั่น</li>
+        </ul></div>
+      </div></li>
+      <li><input type="checkbox" data-id="4"><span class="n">4</span><div>
+        <div class="t">ทดสอบจองจริง 1 รอบ<span class="who">ร้าน + ทีม</span></div>
+        <div class="d">จอง → ได้การ์ดมัดจำในแชท → โอน ฿100 แล้วส่งสลิป → Sine ได้แจ้งเตือน → กดยืนยัน → กด "มาใช้บริการแล้ว" (ได้ +1 แต้ม และข้อความชวนรีวิว)</div>
+      </div></li>
+      <li><input type="checkbox" data-id="5"><span class="n">5</span><div>
+        <div class="t">Publish LINE Login channel (Kingyo Booking)<span class="who">ทีม</span></div>
+        <div class="d">ทำหลังทดสอบผ่าน ก่อน Publish คนที่ไม่ได้มีสิทธิ์ใน channel จะเปิดหน้าจองไม่ได้ (400) <span class="warn">ขั้นนี้ย้อนกลับไม่ได้</span></div>
+      </div></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>🟡 รอคนอื่นทำ <span class="tag t-amber">รอ</span></h2>
+    <ul>
+      <li><input type="checkbox" data-id="8"><span class="n">8</span><div>
+        <div class="t">Google Business Profile<span class="who">เจ้าของบัญชี Google</span></div>
+        <div class="d"><ul>
+          <li>ลิงก์จองออนไลน์บันทึกแล้ว แต่ยังไม่แสดงบน Maps (น่าจะขึ้นหลัง Publish ข้อ 5)</li>
+          <li>มีข้อเสนอแก้ไขข้อมูลจาก Google 1 รายการ รอเจ้าของรับหรือปฏิเสธ</li>
+        </ul></div>
+      </div></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>🟢 ทำทีหลังได้ <span class="tag t-green">ไม่เร่ง</span></h2>
+    <ul>
+      <li><input type="checkbox" data-id="9"><span class="n">9</span><div>
+        <div class="t">รูปร้านและรูปผลงานใน Google</div>
+        <div class="d">ช่วยให้ร้านขึ้นในผลค้นหาและน่าเชื่อถือขึ้น</div>
+      </div></li>
+      <li><input type="checkbox" data-id="10"><span class="n">10</span><div>
+        <div class="t">ตรวจสลิปอัตโนมัติ (EasySlip)</div>
+        <div class="d">พักไว้ก่อน ตอนนี้แอดมินตรวจสลิปเอง ถ้าจะเปิดใช้ ใส่ <code>EASYSLIP_API_KEY</code> ใน worker</div>
+      </div></li>
+      <li><input type="checkbox" data-id="11b"><span class="n">11b</span><div>
+        <div class="t">ถ่ายภาพ flow ใหม่หลังใส่ทรงจริง</div>
+        <div class="d">ภาพใน <code>docs/flow-*.png</code> ใช้โลโก้ใหม่แล้ว แต่ยังเป็นทรงตัวอย่าง ทำหลังข้อ 2</div>
+      </div></li>
+      <li><input type="checkbox" data-id="12"><span class="n">12</span><div>
+        <div class="t">สิทธิ์ LINE OA Manager ของ Top</div>
+        <div class="d">ถ้าต้องการให้ Top ตอบแชทหรือแก้ Rich menu เองใน OA Manager</div>
+      </div></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>✅ เสร็จแล้ว <span class="tag t-done">done</span></h2>
+    <ul>
+      <li><input type="checkbox" checked disabled><span class="n">1</span><div><div class="t">ติดตั้ง Rich menu ใหม่ (โลโก้ไม่มีคำล่าง)</div></div></li>
+      <li><input type="checkbox" checked disabled><span class="n">6</span><div><div class="t">Top เป็น Admin ของ Messaging API channel</div></div></li>
+      <li><input type="checkbox" checked disabled><span class="n">7</span><div><div class="t">Sine แอดเพื่อน OA (แจ้งเตือนแอดมินส่งถึง Sine)</div></div></li>
+      <li><input type="checkbox" checked disabled><span class="n">11</span><div><div class="t">ภาพ flow ชุดใหม่ด้วยโลโก้ใหม่ (<code>docs/</code>)</div></div></li>
+      <li><input type="checkbox" checked disabled><span class="n">13</span><div><div class="t">โฟลเดอร์บน Mac เชื่อมกับ GitHub แล้ว · จัด repo: <code>info/</code> → <code>docs/</code>, ลบ <code>scripts/</code></div></div></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>🔗 ลิงก์ที่ใช้บ่อย</h2>
+    <div class="links">
+      <div><b>หน้าจอง (LIFF)</b><a href="https://liff.line.me/2012646909-vMsNI4wU">liff.line.me/2012646909-vMsNI4wU</a></div>
+      <div><b>เว็บ (GitHub Pages)</b><a href="https://chayanaphat.github.io/lash-booking/">chayanaphat.github.io/lash-booking</a></div>
+      <div><b>API (Cloudflare Worker)</b><a href="https://lash-booking-api.k-chayanaphat.workers.dev/">lash-booking-api.k-chayanaphat.workers.dev</a></div>
+      <div><b>โค้ด</b><a href="https://github.com/chayanaphat/lash-booking">github.com/chayanaphat/lash-booking</a></div>
+      <div><b>LINE Developers</b><a href="https://developers.line.biz/console/">developers.line.biz/console</a></div>
+      <div><b>Google Maps ร้าน</b><a href="https://maps.app.goo.gl/NW6CUYiaUpkZCRYV6">maps.app.goo.gl/NW6CUYiaUpkZCRYV6</a></div>
+    </div>
+  </section>
+
+  <footer>ติ๊กช่องได้เพื่อจดความคืบหน้า (เก็บไว้ในเบราว์เซอร์เครื่องนี้เท่านั้น)</footer>
+</main>
+<script>
+  const KEY = 'kingyo-launch-checklist';
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) {}
+  const boxes = [...document.querySelectorAll('input[type=checkbox]')];
+  function update() {
+    boxes.forEach((b) => b.closest('li').classList.toggle('checked', b.checked));
+    const done = boxes.filter((b) => b.checked).length;
+    document.getElementById('ptext').textContent = `ความคืบหน้า ${done}/${boxes.length} รายการ`;
+    document.getElementById('pbar').style.width = (done / boxes.length * 100) + '%';
+  }
+  boxes.forEach((b) => {
+    if (b.dataset.id && saved[b.dataset.id]) b.checked = true;
+    b.addEventListener('change', () => {
+      if (b.dataset.id) saved[b.dataset.id] = b.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {}
+      update();
+    });
+  });
+  update();
+</script>
+</body>
+</html>
