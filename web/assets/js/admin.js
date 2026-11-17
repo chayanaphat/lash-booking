@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1794894413';
+} from './core.js?v=1794897574';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -480,16 +480,19 @@ async function settings() {
 
     <div class="card mt2">
       <b>Rich menu ของ LINE OA</b>
-      <img src="assets/richmenu.jpg?v=1794894413" style="border-radius:10px;margin-top:10px" alt="">
+      <img src="assets/richmenu.jpg?v=1794897574" style="border-radius:10px;margin-top:10px" alt="">
       <div class="tiny muted mt">กดเพื่อตั้งเมนู จองคิว / โปรโมชั่น / แต้มสะสม เป็นเมนูหลักของ OA (แทนเมนูเดิม)</div>
       <button class="btn ghost mt" id="richmenu">ติดตั้ง Rich menu</button>
     </div>
 
     <div class="card mt2">
       <b>แอดมิน</b>
-      ${adm.env_admins.map((id) => `<div class="small mt"><span class="code">${esc(id)}</span> <span class="tag">ตั้งใน worker</span></div>`).join('')}
-      ${adm.admins.map((a) => `<div class="row between mt"><div class="small">${esc(a.name || a.display_name || '')} <span class="code">${esc(a.line_user_id)}</span></div>
-        ${a.line_user_id !== st.me.user.line_user_id ? `<button class="btn sm outline" data-rmadm="${a.line_user_id}">ลบ</button>` : ''}</div>`).join('')}
+      <div class="tiny muted" style="margin-top:4px">🔔 = รับแจ้งเตือนคิวใหม่ / สลิปรอตรวจ ทาง LINE (1 ข้อความต่อคนต่อครั้ง)</div>
+      ${adm.list.map((a) => `<div class="row between mt adminrow">
+        <label class="switch grow" style="min-width:0"><input type="checkbox" data-notify="${esc(a.line_user_id)}" ${a.notify ? 'checked' : ''}> 🔔
+          <span class="small" style="min-width:0"><b>${esc(a.name || '-')}</b> ${a.main ? '<span class="tag">แอดมินหลัก</span>' : ''}<br><span class="code">${esc(a.line_user_id)}</span></span></label>
+        ${!a.main && a.line_user_id !== st.me.user.line_user_id ? `<button class="btn sm outline" data-rmadm="${a.line_user_id}">ลบ</button>` : ''}</div>`).join('')}
+      <div class="tiny muted mt">แอดมินหลักกำหนดไว้ในระบบ ลบจากหน้านี้ไม่ได้ (กันร้านถูกล็อกออก)</div>
       <label class="f">เพิ่มแอดมิน (LINE User ID ขึ้นต้นด้วย U)</label>
       <div class="row"><input class="input" id="newadm" placeholder="U1234..."><input class="input" id="newname" placeholder="ชื่อ" style="max-width:110px"><button class="btn sm" id="addadm">เพิ่ม</button></div>
       <div class="tiny muted mt">ให้คนที่จะเป็นแอดมินเปิดลิงก์ LIFF /admin.html จะเห็น User ID ของตัวเอง</div>
@@ -511,7 +514,7 @@ async function settings() {
     if (!confirm('ตั้ง Rich menu นี้เป็นเมนูหลักของ LINE OA?')) return;
     e.target.disabled = true;
     try {
-      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1794894413', location.href).href } });
+      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1794897574', location.href).href } });
       toast('ติดตั้ง Rich menu แล้ว ✅ เปิดแชท OA เพื่อดู');
     } catch (err) {
       toast(err.message === 'line_token_missing' ? 'ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Cloudflare' : errText(err) + ' ' + (err.data?.detail || ''), 5000);
@@ -519,6 +522,18 @@ async function settings() {
       e.target.disabled = false;
     }
   };
+  $view().querySelectorAll('[data-notify]').forEach((cb) => (cb.onchange = async () => {
+    const ids = [...$view().querySelectorAll('[data-notify]:checked')].map((x) => x.dataset.notify);
+    try {
+      // ไม่มีใครถูกเลือก = ปิดแจ้งเตือนแอดมินทั้งหมด
+      await api('/api/admin/settings', { method: 'PUT', body: ids.length ? { notify_admin_ids: ids.join(','), notify_admins: 1 } : { notify_admins: 0 } });
+      const nb = $view().querySelector('[data-kb="notify_admins"]');
+      if (nb) nb.checked = ids.length > 0;
+      toast(ids.length ? `แจ้งเตือน ${ids.length} คน` : 'ปิดแจ้งเตือนแอดมินแล้ว');
+    } catch (e) {
+      toast(errText(e));
+    }
+  }));
   $view().querySelector('#addadm').onclick = async () => {
     try {
       await api('/api/admin/admins', { method: 'POST', body: { line_user_id: val($view(), '#newadm'), name: val($view(), '#newname') } });

@@ -1,6 +1,6 @@
 // Booking service — shared by REST API, LINE webhook and cron
 import {
-  BLOCKING_SQL, adminIds, busyForDate, getBookingByCode, getHolidays, getHours, getPromotions,
+  BLOCKING_SQL, busyForDate, notifyAdminIds, getBookingByCode, getHolidays, getHours, getPromotions,
   getSettings, getStyles, parseBooking, saveImage, styleMap,
 } from './db.js';
 import { push, multicast } from './line.js';
@@ -83,7 +83,8 @@ export async function createBooking(env, user, dbUser, body) {
 
 export async function notifyAdmins(env, message) {
   try {
-    await multicast(env, await adminIds(env), message);
+    const to = await notifyAdminIds(env, await getSettings(env));
+    if (to.length) await multicast(env, to, message);
   } catch (e) {
     console.error('notifyAdmins', e);
   }

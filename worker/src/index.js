@@ -1,6 +1,6 @@
 // Lash booking API — Cloudflare Worker
 import {
-  PUBLIC_SETTING_KEYS, adminIds, envAdminIds, getBookingByCode, getHolidays, getHours, getImage, getPromotions,
+  PUBLIC_SETTING_KEYS, adminIds, envAdminIds, notifyAdminIds, getBookingByCode, getHolidays, getHours, getImage, getPromotions,
   getSettings, getStyles, isAdmin, parseBooking, parsePromo, saveImage, saveSettings, upsertUser,
 } from './db.js';
 import { buildQuote, cancelOwn, changeStatus, createBooking, expirePending, processSlip, sendReminders, slotsFor } from './bookings.js';
@@ -349,7 +349,16 @@ on('POST', '/api/admin/richmenu', 'admin', async ({ env, req }) => {
 // admins (เพิ่มได้จากหน้าแอดมิน หรือใส่ใน ADMIN_USER_IDS)
 on('GET', '/api/admin/admins', 'admin', async ({ env }) => {
   const { results } = await env.DB.prepare('SELECT a.line_user_id, a.name, u.display_name, u.picture_url FROM admins a LEFT JOIN users u ON u.line_user_id = a.line_user_id').all();
-  return json({ env_admins: envAdminIds(env), admins: results, all: await adminIds(env) });
+  const envIds = envAdminIds(env);
+  const envUsers = envIds.length
+    ? (await env.DB.prepare(`SELECT line_user_id, display_name FROM users WHERE line_user_id IN (${envIds.map(() => '?').join(',')})`).bind(...envIds).all()).results
+    : [];
+  const notify = await notifyAdminIds(env, await getSettings(env));
+  const list = [
+    ...envIds.map((id) => ({ line_user_id: id, name: envUsers.find((u) => u.line_user_id === id)?.display_name || '', main: true })),
+    ...results.filter((a) => !envIds.includes(a.line_user_id)).map((a) => ({ line_user_id: a.line_user_id, name: a.name || a.display_name || '', main: false })),
+  ].map((a) => ({ ...a, notify: notify.includes(a.line_user_id) }));
+  return json({ env_admins: envIds, admins: results, all: await adminIds(env), list });
 });
 on('POST', '/api/admin/admins', 'admin', async ({ env, req }) => {
   const b = await readJson(req);

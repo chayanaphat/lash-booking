@@ -21,6 +21,7 @@ export const DEFAULT_SETTINGS = {
   max_people: 4,
   stamps_required: 10,
   notify_admins: 1, // push แจ้งแอดมินเมื่อมีคิวใหม่/รอตรวจสลิป (ใช้โควต้าข้อความ)
+  notify_admin_ids: '', // แอดมินที่รับแจ้งเตือน (คั่นด้วย ,) ว่าง = ทุกคน
   notify_customer: 1, // push แจ้งลูกค้าเมื่อแอดมินยืนยัน/ปฏิเสธสลิป
   review_request: 1, // push ขอบคุณ + ชวนรีวิว Google เมื่อกด "มาใช้บริการแล้ว"
   remind_day_before: 1, // push เตือนนัดล่วงหน้า 1 วัน พร้อมแผนที่
@@ -111,6 +112,13 @@ export async function adminIds(env) {
   const { results } = await env.DB.prepare('SELECT line_user_id FROM admins').all();
   return [...new Set([...envAdminIds(env), ...results.map((r) => r.line_user_id)])];
 }
+/** แอดมินที่รับแจ้งเตือน: ถ้าตั้ง notify_admin_ids ไว้ ส่งเฉพาะคนในรายการ (ที่ยังเป็นแอดมินอยู่) */
+export async function notifyAdminIds(env, settings) {
+  const all = await adminIds(env);
+  const pick = String(settings.notify_admin_ids || '').split(',').map((s) => s.trim()).filter(Boolean);
+  return pick.length ? all.filter((id) => pick.includes(id)) : all;
+}
+
 export async function isAdmin(env, userId) {
   if (envAdminIds(env).includes(userId)) return true;
   return !!(await env.DB.prepare('SELECT 1 FROM admins WHERE line_user_id = ?').bind(userId).first());

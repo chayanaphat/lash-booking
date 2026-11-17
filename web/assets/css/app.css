@@ -235,3 +235,5 @@ input[type="time"].input::-webkit-date-and-time-value {
 
 .shopcard .row .btn { flex: 1 1 0; text-align: center; text-decoration: none; }
 a.btn { display: inline-block; text-align: center; text-decoration: none; }
+
+.adminrow .code { font-size: 11px; }
