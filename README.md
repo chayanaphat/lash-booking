@@ -37,6 +37,8 @@ lash-booking/
 │   ├── wrangler.toml        ← ★ ใส่ database_id, LIFF_ID, LINE_LOGIN_CHANNEL_ID, ADMIN_USER_IDS
 │   ├── schema.sql
 │   └── src/
+├── docs/                    ← เอกสารร้าน: ภาพ flow, ใบราคา, วิธีจอง, โลโก้ต้นฉบับ
+├── scripts/richmenu.mjs     ← ติดตั้ง rich menu ผ่าน CLI (สำรอง ปกติใช้ปุ่มในหน้าแอดมิน)
 └── .github/workflows/       ← auto deploy Pages (+ worker ถ้าตั้ง secret)
 ```
 
