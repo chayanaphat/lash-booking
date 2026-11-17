@@ -1,9 +1,9 @@
 import {
   STATUS, addDays, api, baht, bkkTime, dayName, errText, esc, imgUrl, initLiff, loadImage, monthShort,
   profile, readSlipQR, thaiDate, toast, weekday,
-} from './core.js?v=1794939510';
-import { CONFIG } from './config.js?v=1794939510';
-import { promptPayPayload } from './promptpay.js?v=1794939510';
+} from './core.js?v=1794939712';
+import { CONFIG } from './config.js?v=1794939712';
+import { promptPayPayload } from './promptpay.js?v=1794939712';
 
 const $app = document.getElementById('app');
 const $bar = document.getElementById('bar');
@@ -139,7 +139,7 @@ function viewHome() {
   $app.innerHTML = `
     <section class="hero">
       <div class="hero-top">
-        <h1 class="wordmark"><img src="assets/logo-wordmark.png?v=1794939510" alt="${esc(settings.shop_name)}"></h1>
+        <h1 class="wordmark"><img src="assets/logo-wordmark.png?v=1794939712" alt="${esc(settings.shop_name)}"></h1>
         <div class="hero-user">
           <div class="tiny muted">สวัสดีค่ะ</div>
           <div class="small hero-name">${esc(u.display_name || profile?.displayName || '')}</div>
@@ -355,7 +355,7 @@ function styleCard(s) {
       ${n ? `<span class="badge-n">${n}</span>` : ''}
       <div class="b">
         <div class="n">${esc(s.name)}</div>
-        ${s.description ? `<div class="tiny muted">${esc(s.description)}</div>` : ''}
+        ${s.description ? `<div class="tiny muted desc">${esc(s.description)}</div>` : ''}
         ${price}${chips}
         <button class="btn sm ghost add" data-add="${s.id}">${addon ? '+ เพิ่มบริการนี้' : '+ เลือก'}</button>
       </div>

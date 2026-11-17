@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1794939510';
+} from './core.js?v=1794939712';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -209,7 +209,7 @@ async function styles() {
       <div class="card list-item" ${s.active ? '' : 'style="opacity:.5"'}>
         ${s.image_id ? `<img class="thumb" src="${imgUrl(s.image_id)}">` : '<div class="thumb">👁️</div>'}
         <div class="grow"><b>${esc(s.name)}</b> ${s.active ? '' : '<span class="tag">ซ่อน</span>'}
-          <div class="small muted">${esc(s.description)}</div>
+          <div class="small muted desc">${esc(s.description)}</div>
           <div class="small">${baht(s.price)} · ${s.duration_min} นาที · ลำดับ ${s.sort}</div>
           <div class="tiny muted">${esc(s.category || '')}${s.kind === 'addon' ? ' · บริการเสริม' : ''}${s.stamps > 0 ? ` · <span style="color:var(--rose)">💗 +${s.stamps} แต้ม</span>` : ' · ไม่ได้แต้ม'}${Number(s.redeemable) ? ' · <span style="color:#a2742a">🎁 แลกแต้มได้</span>' : ''}</div></div>
         <button class="btn sm outline" data-edit="${s.id}">แก้ไข</button>
@@ -232,7 +232,7 @@ function styleForm(s) {
         <option value="main">บริการหลัก (นับเป็น 1 คน)</option>
         <option value="addon" ${s.kind === 'addon' ? 'selected' : ''}>บริการเสริม (เพิ่มคู่บริการหลัก)</option></select></div>
     </div>
-    <label class="f">คำอธิบาย</label><input class="input" id="desc" value="${esc(s.description)}" maxlength="300">
+    <label class="f">คำอธิบาย <span class="tiny muted">(กด Enter เพื่อขึ้นบรรทัดใหม่)</span></label><textarea class="input" id="desc" rows="3" maxlength="300">${esc(s.description)}</textarea>
     <div class="grid2">
       <div><label class="f">ราคา (บาท)</label><input class="input" id="price" type="number" min="0" value="${s.price}"></div>
       <div><label class="f">ใช้เวลา (นาที)</label><input class="input" id="dur" type="number" min="15" step="15" value="${s.duration_min}"></div>
@@ -647,7 +647,7 @@ async function settings() {
 
     <div class="card mt2">
       <b>Rich menu ของ LINE OA</b>
-      <img src="assets/richmenu.jpg?v=1794939510" style="border-radius:10px;margin-top:10px" alt="">
+      <img src="assets/richmenu.jpg?v=1794939712" style="border-radius:10px;margin-top:10px" alt="">
       <div class="tiny muted mt">กดเพื่อตั้งเมนู จองคิว / แต้มสะสม &amp; คิวของฉัน เป็นเมนูหลักของ OA (แทนเมนูเดิม)</div>
       <button class="btn ghost mt" id="richmenu">ติดตั้ง Rich menu</button>
     </div>
@@ -681,7 +681,7 @@ async function settings() {
     if (!confirm('ตั้ง Rich menu นี้เป็นเมนูหลักของ LINE OA?')) return;
     e.target.disabled = true;
     try {
-      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1794939510', location.href).href } });
+      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1794939712', location.href).href } });
       toast('ติดตั้ง Rich menu แล้ว ✅ เปิดแชท OA เพื่อดู');
     } catch (err) {
       toast(err.message === 'line_token_missing' ? 'ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Cloudflare' : errText(err) + ' ' + (err.data?.detail || ''), 5000);
