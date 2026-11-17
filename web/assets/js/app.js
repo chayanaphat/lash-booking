@@ -1,9 +1,9 @@
 import {
   STATUS, addDays, api, baht, bkkTime, dayName, errText, esc, imgUrl, initLiff, loadImage, monthShort,
   profile, readSlipQR, thaiDate, toast, weekday,
-} from './core.js?v=1794939712';
-import { CONFIG } from './config.js?v=1794939712';
-import { promptPayPayload } from './promptpay.js?v=1794939712';
+} from './core.js?v=1794943205';
+import { CONFIG } from './config.js?v=1794943205';
+import { promptPayPayload } from './promptpay.js?v=1794943205';
 
 const $app = document.getElementById('app');
 const $bar = document.getElementById('bar');
@@ -139,7 +139,7 @@ function viewHome() {
   $app.innerHTML = `
     <section class="hero">
       <div class="hero-top">
-        <h1 class="wordmark"><img src="assets/logo-wordmark.png?v=1794939712" alt="${esc(settings.shop_name)}"></h1>
+        <h1 class="wordmark"><img src="assets/logo-wordmark.png?v=1794943205" alt="${esc(settings.shop_name)}"></h1>
         <div class="hero-user">
           <div class="tiny muted">สวัสดีค่ะ</div>
           <div class="small hero-name">${esc(u.display_name || profile?.displayName || '')}</div>
@@ -430,7 +430,7 @@ async function viewBook() {
       <label class="f">เบอร์โทร</label>
       <input class="input" id="phone" value="${esc(state.form.phone)}" inputmode="tel" maxlength="15" placeholder="08xxxxxxxx" />
       <label class="f">หมายเหตุ (ถ้ามี)</label>
-      <textarea class="input" id="note" rows="2" maxlength="300" placeholder="เช่น แพ้กาว, ขอช่างคนเดิม">${esc(state.form.note)}</textarea>
+      <textarea class="input" id="note" rows="2" maxlength="300" placeholder="เช่น แพ้กาว">${esc(state.form.note)}</textarea>
     </div>
     ${canReward ? `
       <label class="check mt"><input type="checkbox" id="reward" ${state.useReward ? 'checked' : ''}/>
