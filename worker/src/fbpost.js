@@ -131,8 +131,7 @@ ${current ? `\nร่างปัจจุบัน:\n${current}\nสิ่ง�
 ตอบเป็น JSON เท่านั้น: {"text": "...", "style_ids": [..]}`;
 }
 
-async function gemini(env, settings, prompt) {
-  const model = settings.fb_model || 'gemini-flash-latest';
+async function geminiOnce(env, model, prompt) {
   const res = await fetch(`${env.GEMINI_BASE || 'https://generativelanguage.googleapis.com'}/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
@@ -142,11 +141,33 @@ async function gemini(env, settings, prompt) {
     }),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(`gemini_${res.status}: ${data.error?.message || ''}`.slice(0, 200));
+  if (!res.ok) {
+    const err = new Error(`gemini_${res.status}: ${data.error?.message || ''}`.slice(0, 200));
+    err.retry = res.status === 429 || res.status >= 500;
+    throw err;
+  }
   const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text || '').join('') || '';
   const out = parseJSON(raw.replace(/^```json|```$/g, '').trim(), null);
-  if (!out?.text) throw new Error('gemini_bad_output');
+  if (!out?.text) throw Object.assign(new Error('gemini_bad_output'), { retry: true });
   return { text: String(out.text).trim(), style_ids: (out.style_ids || []).map(Number).filter(Boolean) };
+}
+
+/** เรียก Gemini: ลองซ้ำเมื่อโมเดลยุ่ง (503/429) แล้วสลับไปรุ่นเบากว่า */
+async function gemini(env, settings, prompt) {
+  const models = [...new Set([settings.fb_model || 'gemini-flash-latest', 'gemini-flash-lite-latest'])];
+  let last;
+  for (const model of models) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        return await geminiOnce(env, model, prompt);
+      } catch (e) {
+        last = e;
+        if (!e.retry) throw e;
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+      }
+    }
+  }
+  throw last;
 }
 
 function imagesFor(ctx, styleIds, theme) {
@@ -215,6 +236,18 @@ export async function ensureDrafts(env, date) {
        VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?, ?, ?)`,
     ).bind(s.id, date, s.time, theme, d.text, JSON.stringify(d.image_ids), d.source, d.price_ok ? 1 : 0, now, now).run();
     made.push(s.time);
+  }
+  // ร่างที่ยังว่าง (AI ล่มตอนร่าง) → ลองร่างใหม่ก่อนถึงเวลาโพสต์
+  const now = bkkNow();
+  const { results: empty } = await env.DB.prepare(
+    `SELECT * FROM fb_posts WHERE date = ? AND status = 'draft' AND text = '' AND (date > ? OR time > ?) LIMIT 2`,
+  ).bind(date, now.date, now.time).all();
+  for (const p of empty) {
+    const d = await composeDraft(env, { date, theme: p.theme });
+    if (!d.text) continue;
+    await env.DB.prepare('UPDATE fb_posts SET text = ?, image_ids = ?, source = ?, price_ok = ?, updated_at = ? WHERE id = ? AND text = \'\'')
+      .bind(d.text, JSON.stringify(d.image_ids), d.source, d.price_ok ? 1 : 0, nowISO(), p.id).run();
+    made.push(p.time);
   }
   return made;
 }
