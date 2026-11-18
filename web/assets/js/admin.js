@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1795026605';
+} from './core.js?v=1795027138';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -671,7 +671,7 @@ async function settings() {
 
     <div class="card mt2">
       <b>Rich menu ของ LINE OA</b>
-      <img src="assets/richmenu.jpg?v=1795026605" style="border-radius:10px;margin-top:10px" alt="">
+      <img src="assets/richmenu.jpg?v=1795027138" style="border-radius:10px;margin-top:10px" alt="">
       <div class="tiny muted mt">กดเพื่อตั้งเมนู จองคิว / แต้มสะสม &amp; คิวของฉัน เป็นเมนูหลักของ OA (แทนเมนูเดิม)</div>
       <button class="btn ghost mt" id="richmenu">ติดตั้ง Rich menu</button>
     </div>
@@ -688,7 +688,15 @@ async function settings() {
       <div class="row"><input class="input" id="newadm" placeholder="U1234..."><input class="input" id="newname" placeholder="ชื่อ" style="max-width:110px"><button class="btn sm" id="addadm">เพิ่ม</button></div>
       <div class="tiny muted mt">ให้คนที่จะเป็นแอดมินเปิดลิงก์ LIFF /admin.html จะเห็น User ID ของตัวเอง</div>
       <div class="tiny muted mt">User ID ของคุณ: <span class="code">${esc(st.me.user.line_user_id)}</span></div>
-    </div>`;
+    </div>
+    <div class="card mt2 small" id="storage"><b>พื้นที่รูป</b> <span class="muted">กำลังโหลด…</span></div>`;
+  api('/api/admin/storage').then((x) => {
+    const mb = (b) => (b / 1048576).toFixed(1) + ' MB';
+    const slip = x.by.slip || { n: 0, bytes: 0 };
+    $view().querySelector('#storage').innerHTML = `<b>พื้นที่รูป</b>
+      <div class="mt">รูปทั้งหมด ${x.total.n} รูป · ${mb(x.total.bytes)} <span class="muted">(สลิป ${slip.n} รูป · ${mb(slip.bytes)})</span></div>
+      <div class="tiny muted mt">ล้างรูปที่ไม่ได้ใช้แล้วอัตโนมัติทุกวันหลัง 03:00 · ${x.last_cleanup ? `ล่าสุด ${esc(thaiDate(x.last_cleanup))} ลบ ${x.last_deleted} รูป` : 'ยังไม่เคยล้าง'} · ไม่ลบรูปสลิป</div>`;
+  }).catch(() => {});
   $view().querySelector('#save').onclick = async () => {
     const body = {};
     $view().querySelectorAll('[data-k]').forEach((i) => (body[i.dataset.k] = i.value));
@@ -705,7 +713,7 @@ async function settings() {
     if (!confirm('ตั้ง Rich menu นี้เป็นเมนูหลักของ LINE OA?')) return;
     e.target.disabled = true;
     try {
-      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795026605', location.href).href } });
+      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795027138', location.href).href } });
       toast('ติดตั้ง Rich menu แล้ว ✅ เปิดแชท OA เพื่อดู');
     } catch (err) {
       toast(err.message === 'line_token_missing' ? 'ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Cloudflare' : errText(err) + ' ' + (err.data?.detail || ''), 5000);

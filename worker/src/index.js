@@ -6,6 +6,7 @@ import {
 import { buildQuote, cancelOwn, changeStatus, createBooking, expirePending, processSlip, sendReminders, slotsFor } from './bookings.js';
 import { userFromRequest } from './line.js';
 import { handleWebhook } from './webhook.js';
+import { imageStats, runImageCleanup } from './cleanup.js';
 import {
   FB_THEMES, composeDraft, ensureDrafts, ensureFb, fbConfigured, getSchedules, pageInfo, parsePost, publishPost, runFbCron,
 } from './fbpost.js';
@@ -37,7 +38,7 @@ export default {
     return cors(res, env);
   },
   async scheduled(_evt, env, ctx) {
-    ctx.waitUntil(Promise.all([expirePending(env), sendReminders(env), runFbCron(env).catch((e) => console.error('fb cron', e))]));
+    ctx.waitUntil(Promise.all([expirePending(env), sendReminders(env), runFbCron(env).catch((e) => console.error('fb cron', e)), runImageCleanup(env).catch((e) => console.error('image cleanup', e))]));
   },
 };
 
@@ -320,6 +321,7 @@ on('DELETE', '/api/admin/blocks/:id', 'admin', async ({ env, params }) => {
 });
 
 // settings
+on('GET', '/api/admin/storage', 'admin', async ({ env }) => json(await imageStats(env)));
 on('GET', '/api/admin/settings', 'admin', async ({ env }) => json({ settings: await getSettings(env), slip_auto: !!env.EASYSLIP_API_KEY }));
 on('PUT', '/api/admin/settings', 'admin', async ({ env, req }) => {
   await saveSettings(env, await readJson(req));

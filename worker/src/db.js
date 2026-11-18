@@ -34,6 +34,9 @@ export const DEFAULT_SETTINGS = {
   fb_draft_time: '07:00', // เวลาที่ให้ AI ร่างโพสต์ของวัน
   fb_model: 'gemini-flash-latest',
   fb_phone: '', // เบอร์ที่ใส่ในโพสต์เพจ (ว่าง = ใช้เบอร์ร้าน) เช่น 098-450-4663 (ทราย)
+  // ---- ระบบ (ไม่ได้แก้จากหน้าตั้งค่า)
+  img_cleanup_date: '', // วันที่ล้างรูปค้างล่าสุด
+  img_cleanup_deleted: 0, // จำนวนรูปที่ลบรอบล่าสุด
 };
 const NUMERIC = new Set(
   Object.entries(DEFAULT_SETTINGS)
