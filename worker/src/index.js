@@ -7,7 +7,7 @@ import { buildQuote, cancelOwn, changeStatus, createBooking, expirePending, proc
 import { userFromRequest } from './line.js';
 import { handleWebhook } from './webhook.js';
 import {
-  FB_THEMES, composeDraft, ensureDrafts, ensureFb, fbConfigured, getSchedules, pageInfo, parsePost, postInfo, publishPost, runFbCron,
+  FB_THEMES, composeDraft, ensureDrafts, ensureFb, fbConfigured, getSchedules, pageInfo, parsePost, publishPost, runFbCron,
 } from './fbpost.js';
 import {
   HttpError, addDays, bkkNow, errorResponse, int, isDate, isTime, json, parseDataUrl, readJson, str,
@@ -426,16 +426,6 @@ on('POST', '/api/admin/fb/posts/:id/publish', 'admin', async ({ env, params }) =
   if (p.status === 'posted') throw new HttpError(409, 'already_posted');
   if (!env.FB_PAGE_TOKEN) throw new HttpError(400, 'facebook_not_configured');
   return json(await publishPost(env, p));
-});
-// ตรวจโพสต์บน Facebook (ลิงก์ถาวร / เผยแพร่แล้วไหม / ใครเห็นได้) และเก็บลิงก์ไว้
-on('GET', '/api/admin/fb/posts/:id/info', 'admin', async ({ env, params }) => {
-  await ensureFb(env);
-  const p = await fbPostById(env, int(params.id));
-  if (!p?.fb_post_id) throw new HttpError(404, 'not_posted');
-  let info;
-  try { info = await postInfo(env, p.fb_post_id); } catch (e) { throw new HttpError(502, 'facebook_error', { detail: String(e.message || e) }); }
-  if (info.permalink_url) await env.DB.prepare('UPDATE fb_posts SET permalink = ? WHERE id = ?').bind(info.permalink_url, p.id).run();
-  return json({ info });
 });
 on('POST', '/api/admin/fb/fallbacks', 'admin', async ({ env, req }) => {
   await ensureFb(env);

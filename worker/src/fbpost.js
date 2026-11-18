@@ -21,15 +21,18 @@ export async function ensureFb(env) {
       id INTEGER PRIMARY KEY AUTOINCREMENT, schedule_id INTEGER, date TEXT NOT NULL, time TEXT NOT NULL,
       theme TEXT NOT NULL DEFAULT '', text TEXT NOT NULL DEFAULT '', image_ids TEXT NOT NULL DEFAULT '[]',
       status TEXT NOT NULL DEFAULT 'draft', source TEXT NOT NULL DEFAULT 'ai', price_ok INTEGER NOT NULL DEFAULT 1,
-      fb_post_id TEXT, error TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL, posted_at TEXT)`),
+      fb_post_id TEXT, error TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL)`),
     env.DB.prepare('CREATE UNIQUE INDEX IF NOT EXISTS idx_fb_posts_slot ON fb_posts(schedule_id, date)'),
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS fb_fallbacks (
       id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT NOT NULL, image_ids TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL)`),
   ]);
-  try {
-    await env.DB.prepare("ALTER TABLE fb_posts ADD COLUMN permalink TEXT NOT NULL DEFAULT ''").run();
-  } catch (e) {
-    if (!/duplicate column/i.test(String(e.message))) throw e;
+  // คอลัมน์ที่เลิกใช้แล้ว (ลิงก์โพสต์ / เวลาโพสต์จริง)
+  for (const col of ['permalink', 'posted_at']) {
+    try {
+      await env.DB.prepare(`ALTER TABLE fb_posts DROP COLUMN ${col}`).run();
+    } catch (e) {
+      if (!/no such column/i.test(String(e.message))) console.error('drop column', col, e);
+    }
   }
   ready = true;
 }
@@ -317,15 +320,7 @@ export async function publishToPage(env, post) {
   const params = { message: post.text };
   media.forEach((m, i) => (params[`attached_media[${i}]`] = JSON.stringify({ media_fbid: m })));
   const r = await graph(env, `${page.id}/feed`, params);
-  return { id: r.id, permalink: await postInfo(env, r.id).then((i) => i.permalink_url || '').catch(() => '') };
-}
-
-/** ข้อมูลโพสต์จาก Facebook: ลิงก์ถาวร สถานะเผยแพร่ และใครเห็นได้ */
-export async function postInfo(env, id) {
-  const res = await fetch(`${graphBase(env)}/${id}?fields=permalink_url,is_published,privacy,created_time&access_token=${encodeURIComponent(env.FB_PAGE_TOKEN)}`);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.error) throw new Error((data.error?.message || 'facebook_error').slice(0, 200));
-  return data;
+  return r.id;
 }
 
 async function markPost(env, id, patch) {
@@ -337,9 +332,9 @@ async function markPost(env, id, patch) {
 export async function publishPost(env, post) {
   try {
     if (!post.text.trim()) throw new Error('ไม่มีข้อความ');
-    const r = await publishToPage(env, post);
-    await markPost(env, post.id, { status: 'posted', fb_post_id: r.id, permalink: r.permalink, error: '', posted_at: nowISO() });
-    return { ok: true, fb_post_id: r.id, permalink: r.permalink };
+    const fbId = await publishToPage(env, post);
+    await markPost(env, post.id, { status: 'posted', fb_post_id: fbId, error: '' });
+    return { ok: true, fb_post_id: fbId };
   } catch (e) {
     await markPost(env, post.id, { status: 'failed', error: String(e.message || e).slice(0, 200) });
     await notifyAdmins(env, text(`⚠️ โพสต์เพจไม่สำเร็จ (${thaiDate(post.date)} ${post.time})\n${String(e.message || e).slice(0, 150)}\nดู/ลองใหม่ได้ที่หน้าแอดมิน → 📣 โพสต์เพจ`));

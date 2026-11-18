@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1795025593';
+} from './core.js?v=1795026605';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -671,7 +671,7 @@ async function settings() {
 
     <div class="card mt2">
       <b>Rich menu ของ LINE OA</b>
-      <img src="assets/richmenu.jpg?v=1795025593" style="border-radius:10px;margin-top:10px" alt="">
+      <img src="assets/richmenu.jpg?v=1795026605" style="border-radius:10px;margin-top:10px" alt="">
       <div class="tiny muted mt">กดเพื่อตั้งเมนู จองคิว / แต้มสะสม &amp; คิวของฉัน เป็นเมนูหลักของ OA (แทนเมนูเดิม)</div>
       <button class="btn ghost mt" id="richmenu">ติดตั้ง Rich menu</button>
     </div>
@@ -705,7 +705,7 @@ async function settings() {
     if (!confirm('ตั้ง Rich menu นี้เป็นเมนูหลักของ LINE OA?')) return;
     e.target.disabled = true;
     try {
-      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795025593', location.href).href } });
+      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795026605', location.href).href } });
       toast('ติดตั้ง Rich menu แล้ว ✅ เปิดแชท OA เพื่อดู');
     } catch (err) {
       toast(err.message === 'line_token_missing' ? 'ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Cloudflare' : errText(err) + ' ' + (err.data?.detail || ''), 5000);
@@ -794,29 +794,6 @@ async function fbDrafts() {
   $fbv().querySelectorAll('[data-fbregen]').forEach((b) => (b.onclick = () => fbRegen(Number(b.dataset.fbregen), '', b)));
   $fbv().querySelectorAll('[data-fbappr]').forEach((b) => (b.onclick = () => fbSetStatus(posts.find((p) => p.id === Number(b.dataset.fbappr)), b.dataset.to)));
   $fbv().querySelectorAll('[data-fbpub]').forEach((b) => (b.onclick = () => fbPublish(Number(b.dataset.fbpub), b)));
-  bindFbLinks(posts);
-}
-
-// เปิดโพสต์บน Facebook: ใช้ลิงก์ถาวรจาก Facebook และเปิดนอกแอป LINE (ในแอปไลน์ไม่ได้ล็อกอิน Facebook)
-function fbPostUrl(p) {
-  if (p.permalink) return p.permalink;
-  const [page, post] = String(p.fb_post_id).split('_');
-  return post ? `https://www.facebook.com/${page}/posts/${post}` : `https://www.facebook.com/${p.fb_post_id}`;
-}
-function bindFbLinks(posts) {
-  $fbv().querySelectorAll('[data-fblink]').forEach((b) => (b.onclick = async () => {
-    const p = posts.find((x) => x.id === Number(b.dataset.fblink));
-    let url = fbPostUrl(p);
-    if (!p.permalink) {
-      try {
-        const { info } = await api(`/api/admin/fb/posts/${p.id}/info`);
-        if (info.permalink_url) url = p.permalink = info.permalink_url;
-        if (info.privacy?.value && info.privacy.value !== 'EVERYONE') toast(`โพสต์นี้ตั้งค่าให้เห็นเฉพาะ: ${info.privacy.description || info.privacy.value}`);
-      } catch (e) { /* ใช้ลิงก์สำรอง */ }
-    }
-    if (window.liff?.isInClient?.()) liff.openWindow({ url, external: true });
-    else window.open(url, '_blank', 'noopener');
-  }));
 }
 
 function fbCard(p) {
@@ -833,7 +810,7 @@ function fbCard(p) {
       ${p.status === 'approved' ? `<button class="btn sm outline" data-fbappr="${p.id}" data-to="draft">ยกเลิกอนุมัติ</button>`
         : p.status === 'failed' ? `<button class="btn sm" data-fbpub="${p.id}">ลองโพสต์อีกครั้ง</button>`
         : `<button class="btn sm" data-fbappr="${p.id}" data-to="approved">✅ อนุมัติ</button>`}
-    </div>` : p.fb_post_id ? `<button class="btn sm ghost" data-fblink="${p.id}">ดูโพสต์บน Facebook →</button>` : ''}
+    </div>` : ''}
   </div>`;
 }
 
@@ -1003,7 +980,6 @@ async function fbHistory() {
     <div class="grow" style="min-width:0">
       <div class="row" style="gap:6px"><b class="small">${esc(thaiDate(p.date))} · ${esc(p.time)}</b><span class="tag">${esc(p.theme)}</span><span class="grow"></span>${fbPill(p.status)}</div>
       <div class="tiny muted fb-one">${esc(p.text)}</div>
-      ${p.fb_post_id ? `<button class="chip-btn tiny" data-fblink="${p.id}">ดูบน Facebook →</button>` : p.error ? `<div class="tiny fb-bad-t">${esc(p.error)}</div>` : ''}
+      ${p.error ? `<div class="tiny fb-bad-t">${esc(p.error)}</div>` : ''}
     </div></div>`).join('') || '<div class="empty">ยังไม่มีประวัติ</div>';
-  bindFbLinks(posts);
 }

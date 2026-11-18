@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=1795025593';
+import { CONFIG } from './config.js?v=1795026605';
 
 let idToken = null;
 let devUser = null;
