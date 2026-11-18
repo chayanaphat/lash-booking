@@ -1,9 +1,9 @@
 import {
   STATUS, addDays, api, baht, bkkTime, dayName, errText, esc, imgUrl, initLiff, loadImage, monthShort,
   profile, readSlipQR, thaiDate, toast, weekday,
-} from './core.js?v=1795023629';
-import { CONFIG } from './config.js?v=1795023629';
-import { promptPayPayload } from './promptpay.js?v=1795023629';
+} from './core.js?v=1795024090';
+import { CONFIG } from './config.js?v=1795024090';
+import { promptPayPayload } from './promptpay.js?v=1795024090';
 
 const $app = document.getElementById('app');
 const $bar = document.getElementById('bar');
@@ -139,7 +139,7 @@ function viewHome() {
   $app.innerHTML = `
     <section class="hero">
       <div class="hero-top">
-        <h1 class="wordmark"><img src="assets/logo-wordmark.png?v=1795023629" alt="${esc(settings.shop_name)}"></h1>
+        <h1 class="wordmark"><img src="assets/logo-wordmark.png?v=1795024090" alt="${esc(settings.shop_name)}"></h1>
         <div class="hero-user">
           <div class="tiny muted">สวัสดีค่ะ</div>
           <div class="small hero-name">${esc(u.display_name || profile?.displayName || '')}</div>
@@ -171,6 +171,7 @@ function viewHome() {
   `;
   bindGo();
   $app.querySelectorAll('[data-story]').forEach((b) => (b.onclick = () => openStory(Number(b.dataset.story))));
+  $app.querySelectorAll('[data-gal]').forEach((b) => (b.onclick = () => openGallery(Number(b.dataset.gal))));
   $app.querySelectorAll('[data-add]').forEach((b) =>
     b.addEventListener('click', () => {
       const id = Number(b.dataset.add);
@@ -184,6 +185,47 @@ function viewHome() {
     }),
   );
   renderCartBar();
+}
+
+// ------------------------------------------------------------------ แกลเลอรีรูปผลงานของทรง (แตะรูปบนการ์ด)
+function openGallery(styleId) {
+  const s = styleById(styleId);
+  const pics = s?.gallery?.length ? s.gallery : s?.image_id ? [s.image_id] : [];
+  if (!pics.length) return;
+  const el = document.createElement('div');
+  el.className = 'gv';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-modal', 'true');
+  el.setAttribute('aria-label', `รูปผลงาน ${s.name}`);
+  const price = effPrice(s);
+  el.innerHTML = `
+    <div class="gv-top"><span class="gv-n">1 / ${pics.length}</span><button type="button" class="gv-x" aria-label="ปิด">✕</button></div>
+    <div class="gv-track">${pics.map((id) => `<div class="gv-slide"><img src="${imgUrl(id)}" alt="${esc(s.name)}"></div>`).join('')}</div>
+    ${pics.length > 1 ? `<div class="gv-dots">${pics.map((_, i) => `<span class="${i ? '' : 'on'}"></span>`).join('')}</div>` : ''}
+    <div class="gv-foot">
+      <div><b>${esc(s.name)}</b><div class="small">${price < s.price ? `<b class="gv-sale">${baht(price)}</b> <span class="strike">${baht(s.price)}</span>` : baht(s.price)}</div></div>
+      <button type="button" class="btn gv-add">+ เลือกทรงนี้</button>
+    </div>`;
+  document.body.appendChild(el);
+  document.body.style.overflow = 'hidden';
+  const close = () => {
+    el.remove();
+    document.body.style.overflow = '';
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = (e) => e.key === 'Escape' && close();
+  document.addEventListener('keydown', onKey);
+  const track = el.querySelector('.gv-track');
+  track.addEventListener('scroll', () => {
+    const i = Math.round(track.scrollLeft / track.clientWidth);
+    el.querySelector('.gv-n').textContent = `${i + 1} / ${pics.length}`;
+    el.querySelectorAll('.gv-dots span').forEach((d, j) => d.classList.toggle('on', j === i));
+  }, { passive: true });
+  el.querySelector('.gv-x').onclick = close;
+  el.querySelector('.gv-add').onclick = () => {
+    close();
+    $app.querySelector(`[data-add="${styleId}"]`)?.click();
+  };
 }
 
 // ------------------------------------------------------------------ review stories (อัลบั้มไฮไลต์)
@@ -350,7 +392,9 @@ function styleCard(s) {
   const chips = cond.map((c) => `<span class="promo-chip">🔥 ${c.people > 1 ? `มา ${c.people} คน ` : ''}${c.future ? `เริ่ม ${shortDate(c.p.start_date)} ` : ''}ลด ${offText(c.p, s, c.price)}</span>`).join('');
   return `
     <div class="style rel ${n ? 'sel' : ''} ${addon ? 'addon' : ''}">
-      ${s.image_id ? `<img class="ph" src="${imgUrl(s.image_id)}" alt="${esc(s.name)}" loading="lazy">` : `<div class="ph">${addon ? '✨' : '👁️'}</div>`}
+      ${s.image_id
+        ? `<button type="button" class="ph-btn" data-gal="${s.id}" aria-label="ดูรูปผลงาน ${esc(s.name)}"><img class="ph" src="${imgUrl(s.image_id)}" alt="${esc(s.name)}" loading="lazy">${(s.gallery || []).length > 1 ? `<span class="ph-count">📷 ${s.gallery.length}</span>` : ''}</button>`
+        : `<div class="ph">${addon ? '✨' : '👁️'}</div>`}
       ${best ? `<span class="promo-rb">🔥 ลด ${offText(best.p, s, best.price)}</span>` : ''}
       ${n ? `<span class="badge-n">${n}</span>` : ''}
       <div class="b">
