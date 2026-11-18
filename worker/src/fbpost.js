@@ -26,6 +26,11 @@ export async function ensureFb(env) {
     env.DB.prepare(`CREATE TABLE IF NOT EXISTS fb_fallbacks (
       id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT NOT NULL, image_ids TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL)`),
   ]);
+  try {
+    await env.DB.prepare("ALTER TABLE fb_posts ADD COLUMN permalink TEXT NOT NULL DEFAULT ''").run();
+  } catch (e) {
+    if (!/duplicate column/i.test(String(e.message))) throw e;
+  }
   ready = true;
 }
 
@@ -113,7 +118,7 @@ function buildPrompt(env, ctx, theme, recent, freeTomorrow, instruction, current
 โทนภาษา: ${s.fb_tone}
 
 ข้อมูลร้าน (ใช้เฉพาะข้อมูลนี้ ห้ามแต่งราคา โปร หรือบริการที่ไม่มี):
-ที่อยู่: ${s.shop_address} · โทร ${s.shop_phone}
+โทร ${s.shop_phone} (ร้านอยู่หนองคาย)
 บริการและราคา:
 ${styleLines}
 โปรโมชันที่ใช้ได้ตอนนี้:
@@ -128,6 +133,7 @@ ${current ? `\nร่างปัจจุบัน:\n${current}\nสิ่ง�
 - แบ่งเป็น 3–6 บรรทัดสั้น ๆ คั่นแต่ละบรรทัดด้วยการขึ้นบรรทัดใหม่ (\\n ใน JSON) อ่านง่ายบนมือถือ
 - บรรทัดสุดท้ายเป็น "📅 จองคิว 👉 " ตามด้วยลิงก์จองคิว
 - ถ้าพูดถึงราคา ต้องตรงกับข้อมูลข้างบนทุกตัวเลข
+- ห้ามใส่ที่อยู่ร้าน (บ้านเลขที่ ซอย ตำบล) ใส่เบอร์โทรได้
 - เลือก id บริการที่เกี่ยวข้องที่สุด 1–3 รายการ เพื่อใช้รูปผลงานของบริการนั้นประกอบโพสต์
 ตอบเป็น JSON เท่านั้น: {"text": "...", "style_ids": [..]}`;
 }
@@ -283,7 +289,15 @@ export async function publishToPage(env, post) {
   const params = { message: post.text };
   media.forEach((m, i) => (params[`attached_media[${i}]`] = JSON.stringify({ media_fbid: m })));
   const r = await graph(env, `${page.id}/feed`, params);
-  return r.id;
+  return { id: r.id, permalink: await postInfo(env, r.id).then((i) => i.permalink_url || '').catch(() => '') };
+}
+
+/** ข้อมูลโพสต์จาก Facebook: ลิงก์ถาวร สถานะเผยแพร่ และใครเห็นได้ */
+export async function postInfo(env, id) {
+  const res = await fetch(`${graphBase(env)}/${id}?fields=permalink_url,is_published,privacy,created_time&access_token=${encodeURIComponent(env.FB_PAGE_TOKEN)}`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.error) throw new Error((data.error?.message || 'facebook_error').slice(0, 200));
+  return data;
 }
 
 async function markPost(env, id, patch) {
@@ -295,9 +309,9 @@ async function markPost(env, id, patch) {
 export async function publishPost(env, post) {
   try {
     if (!post.text.trim()) throw new Error('ไม่มีข้อความ');
-    const fbId = await publishToPage(env, post);
-    await markPost(env, post.id, { status: 'posted', fb_post_id: fbId, error: '', posted_at: nowISO() });
-    return { ok: true, fb_post_id: fbId };
+    const r = await publishToPage(env, post);
+    await markPost(env, post.id, { status: 'posted', fb_post_id: r.id, permalink: r.permalink, error: '', posted_at: nowISO() });
+    return { ok: true, fb_post_id: r.id, permalink: r.permalink };
   } catch (e) {
     await markPost(env, post.id, { status: 'failed', error: String(e.message || e).slice(0, 200) });
     await notifyAdmins(env, text(`⚠️ โพสต์เพจไม่สำเร็จ (${thaiDate(post.date)} ${post.time})\n${String(e.message || e).slice(0, 150)}\nดู/ลองใหม่ได้ที่หน้าแอดมิน → 📣 โพสต์เพจ`));
