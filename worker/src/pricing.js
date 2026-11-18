@@ -7,7 +7,7 @@ export function activePromotions(promos, date) {
   );
 }
 
-function promoPrice(p, style) {
+export function promoPrice(p, style) {
   const base = style.price;
   const listed = p.style_ids && p.style_ids.length;
   if (listed && !p.style_ids.map(Number).includes(Number(style.id))) return null;

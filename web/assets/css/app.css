@@ -295,3 +295,22 @@ a.btn { display: inline-block; text-align: center; text-decoration: none; }
 
 /* คำอธิบายทรง: รองรับการขึ้นบรรทัดใหม่ */
 .desc { white-space: pre-line; }
+
+/* แอดมิน: โพสต์เพจ Facebook */
+.fb-card { display: flex; flex-direction: column; gap: 8px; }
+.fb-time { font-size: 17px; }
+.fb-text { white-space: pre-line; font-size: 13px; background: #faf7fb; border-radius: 12px; padding: 10px 12px; max-height: 180px; overflow: auto; }
+.fb-one { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fb-thumbs { display: flex; gap: 6px; }
+.fb-th { width: 60px; height: 60px; object-fit: cover; border-radius: 10px; flex: none; background: #f1e9f3; }
+.fb-acts { gap: 6px; flex-wrap: wrap; }
+.fb-pill { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.fb-ok { background: #e2f3ea; color: #2f7a5c; } .fb-warn { background: #fdeedd; color: #a35a12; }
+.fb-bad { background: #fbe4e2; color: #b3261e; } .fb-mute { background: #efeaf2; color: #6f6076; }
+.fb-ok-t { color: #2f7a5c; } .fb-bad-t { color: #b3261e; }
+.fb-sched, .fb-hist { gap: 10px; align-items: center; }
+.fb-pickgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.fb-pick { position: relative; padding: 0; border: 0; background: none; border-radius: 10px; overflow: hidden; aspect-ratio: 1 / 1; cursor: pointer; }
+.fb-pick img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.fb-pick.on { outline: 3px solid var(--rose); outline-offset: -3px; }
+.fb-pick span { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; background: var(--rose); color: #fff; font-size: 12px; font-weight: 700; display: grid; place-items: center; }

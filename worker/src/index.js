@@ -7,6 +7,9 @@ import { buildQuote, cancelOwn, changeStatus, createBooking, expirePending, proc
 import { userFromRequest } from './line.js';
 import { handleWebhook } from './webhook.js';
 import {
+  FB_THEMES, composeDraft, ensureDrafts, ensureFb, fbConfigured, getSchedules, pageInfo, parsePost, publishPost, runFbCron,
+} from './fbpost.js';
+import {
   HttpError, addDays, bkkNow, errorResponse, int, isDate, isTime, json, parseDataUrl, readJson, str,
 } from './util.js';
 
@@ -34,7 +37,7 @@ export default {
     return cors(res, env);
   },
   async scheduled(_evt, env, ctx) {
-    ctx.waitUntil(Promise.all([expirePending(env), sendReminders(env)]));
+    ctx.waitUntil(Promise.all([expirePending(env), sendReminders(env), runFbCron(env).catch((e) => console.error('fb cron', e))]));
   },
 };
 
@@ -324,6 +327,114 @@ on('POST', '/api/admin/images', 'admin', async ({ env, req }) => {
 });
 
 // reviews (อัลบั้มไฮไลต์)
+// ---------------------------------------------------------------- admin: โพสต์เพจ Facebook
+const fbPostById = async (env, id) => parsePost(await env.DB.prepare('SELECT * FROM fb_posts WHERE id = ?').bind(id).first());
+const fbImages = (v) => (Array.isArray(v) ? v.map((x) => str(x, 64)).filter(Boolean).slice(0, 4) : []);
+const fbDays = (v) => [...new Set((Array.isArray(v) ? v : []).map(Number).filter((d) => d >= 0 && d <= 6))].sort();
+
+on('GET', '/api/admin/fb', 'admin', async ({ env }) => {
+  await ensureFb(env);
+  const today = bkkNow().date;
+  const [schedules, posts, fallbacks] = await Promise.all([
+    getSchedules(env),
+    env.DB.prepare('SELECT * FROM fb_posts WHERE date >= ? ORDER BY date, time').bind(today).all(),
+    env.DB.prepare('SELECT * FROM fb_fallbacks ORDER BY id DESC').all(),
+  ]);
+  let page = null;
+  if (env.FB_PAGE_TOKEN) {
+    try { page = await pageInfo(env); } catch (e) { page = { error: String(e.message || e) }; }
+  }
+  return json({
+    configured: fbConfigured(env), page, today, themes: FB_THEMES, schedules,
+    posts: posts.results.map(parsePost), fallbacks: fallbacks.results.map((f) => ({ ...f, image_ids: JSON.parse(f.image_ids || '[]') })),
+  });
+});
+on('GET', '/api/admin/fb/history', 'admin', async ({ env }) => {
+  await ensureFb(env);
+  const { results } = await env.DB.prepare(
+    `SELECT * FROM fb_posts WHERE status IN ('posted','failed','skipped') OR date < ? ORDER BY date DESC, time DESC LIMIT 60`,
+  ).bind(bkkNow().date).all();
+  return json({ posts: results.map(parsePost) });
+});
+on('POST', '/api/admin/fb/schedules', 'admin', async ({ env, req }) => {
+  await ensureFb(env);
+  const b = await readJson(req);
+  if (!isTime(b.time)) throw new HttpError(400, 'invalid_time');
+  const days = fbDays(b.days);
+  if (!days.length) throw new HttpError(400, 'days_required');
+  await env.DB.prepare('INSERT INTO fb_schedules (time, days, theme, active, created_at) VALUES (?, ?, ?, ?, ?)')
+    .bind(b.time, JSON.stringify(days), str(b.theme, 30), b.active === false ? 0 : 1, new Date().toISOString()).run();
+  return json({ ok: true });
+});
+on('PUT', '/api/admin/fb/schedules/:id', 'admin', async ({ env, req, params }) => {
+  await ensureFb(env);
+  const b = await readJson(req);
+  if (!isTime(b.time)) throw new HttpError(400, 'invalid_time');
+  const days = fbDays(b.days);
+  if (!days.length) throw new HttpError(400, 'days_required');
+  await env.DB.prepare('UPDATE fb_schedules SET time = ?, days = ?, theme = ?, active = ? WHERE id = ?')
+    .bind(b.time, JSON.stringify(days), str(b.theme, 30), b.active === false ? 0 : 1, int(params.id)).run();
+  return json({ ok: true });
+});
+on('DELETE', '/api/admin/fb/schedules/:id', 'admin', async ({ env, params }) => {
+  await ensureFb(env);
+  await env.DB.prepare('DELETE FROM fb_schedules WHERE id = ?').bind(int(params.id)).run();
+  return json({ ok: true });
+});
+// ร่างโพสต์ของวันนี้ทันที (ไม่ต้องรอเวลาร่าง)
+on('POST', '/api/admin/fb/generate', 'admin', async ({ env }) => json({ made: await ensureDrafts(env, bkkNow().date) }));
+on('PUT', '/api/admin/fb/posts/:id', 'admin', async ({ env, req, params }) => {
+  await ensureFb(env);
+  const p = await fbPostById(env, int(params.id));
+  if (!p) throw new HttpError(404, 'not_found');
+  if (['posted'].includes(p.status)) throw new HttpError(409, 'already_posted');
+  const b = await readJson(req);
+  const status = ['draft', 'approved', 'skipped'].includes(b.status) ? b.status : p.status === 'failed' ? 'draft' : p.status;
+  await env.DB.prepare('UPDATE fb_posts SET text = ?, image_ids = ?, status = ?, price_ok = 1, error = ?, updated_at = ? WHERE id = ?')
+    .bind(str(b.text ?? p.text, 3000), JSON.stringify(b.image_ids ? fbImages(b.image_ids) : p.image_ids), status, '', new Date().toISOString(), p.id).run();
+  return json({ post: await fbPostById(env, p.id) });
+});
+on('POST', '/api/admin/fb/posts/:id/regenerate', 'admin', async ({ env, req, params }) => {
+  await ensureFb(env);
+  const p = await fbPostById(env, int(params.id));
+  if (!p) throw new HttpError(404, 'not_found');
+  if (p.status === 'posted') throw new HttpError(409, 'already_posted');
+  if (!env.GEMINI_API_KEY) throw new HttpError(400, 'gemini_not_configured');
+  const b = await readJson(req);
+  let d;
+  try {
+    d = await composeDraft(env, { date: p.date, theme: p.theme, instruction: str(b.instruction, 200), current: p.text || ' ' });
+  } catch (e) {
+    throw new HttpError(502, 'ai_failed', { detail: String(e.message || e).slice(0, 200) });
+  }
+  await env.DB.prepare(`UPDATE fb_posts SET text = ?, image_ids = ?, source = 'ai', price_ok = ?, status = 'draft', error = '', updated_at = ? WHERE id = ?`)
+    .bind(d.text, JSON.stringify(b.keep_images ? p.image_ids : d.image_ids), d.price_ok ? 1 : 0, new Date().toISOString(), p.id).run();
+  return json({ post: await fbPostById(env, p.id) });
+});
+// โพสต์ทันที (ทดสอบ / ลองใหม่หลังล้มเหลว)
+on('POST', '/api/admin/fb/posts/:id/publish', 'admin', async ({ env, params }) => {
+  await ensureFb(env);
+  const p = await fbPostById(env, int(params.id));
+  if (!p) throw new HttpError(404, 'not_found');
+  if (p.status === 'posted') throw new HttpError(409, 'already_posted');
+  if (!env.FB_PAGE_TOKEN) throw new HttpError(400, 'facebook_not_configured');
+  return json(await publishPost(env, p));
+});
+on('POST', '/api/admin/fb/fallbacks', 'admin', async ({ env, req }) => {
+  await ensureFb(env);
+  const b = await readJson(req);
+  const t = str(b.text, 3000);
+  if (!t) throw new HttpError(400, 'text_required');
+  await env.DB.prepare('INSERT INTO fb_fallbacks (text, image_ids, created_at) VALUES (?, ?, ?)')
+    .bind(t, JSON.stringify(fbImages(b.image_ids)), new Date().toISOString()).run();
+  return json({ ok: true });
+});
+on('DELETE', '/api/admin/fb/fallbacks/:id', 'admin', async ({ env, params }) => {
+  await ensureFb(env);
+  await env.DB.prepare('DELETE FROM fb_fallbacks WHERE id = ?').bind(int(params.id)).run();
+  return json({ ok: true });
+});
+
 on('GET', '/api/admin/reviews', 'admin', async ({ env }) => json({ albums: await getReviewAlbums(env) }));
 on('POST', '/api/admin/review-albums', 'admin', async ({ env, req }) => {
   const b = await readJson(req);

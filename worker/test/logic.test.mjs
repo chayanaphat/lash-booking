@@ -119,3 +119,29 @@ test('แลกแต้มได้เฉพาะทรงที่ตั้�
   assert.equal(q.stamps_earned, 1);
   assert.throws(() => quote(st, [1], [], '2026-12-01', { useReward: true }), /reward_not_eligible/);
 });
+
+// ---------------- โพสต์เพจ Facebook
+import { pickTheme, priceCheck, schedulesForDate, validPrices } from '../src/fbpost.js';
+
+test('fb: schedules for a weekday', () => {
+  const s = [{ id: 1, active: true, days: [0, 1, 2, 3, 4, 5, 6] }, { id: 2, active: true, days: [1, 3, 5] }, { id: 3, active: false, days: [3] }];
+  assert.deepEqual(schedulesForDate(s, '2026-11-18').map((x) => x.id), [1, 2]); // พุธ
+  assert.deepEqual(schedulesForDate(s, '2026-11-19').map((x) => x.id), [1]); // พฤหัส
+});
+
+test('fb: theme rotation skips the last used theme', () => {
+  assert.equal(pickTheme({ theme: 'รีวิวลูกค้า' }, ['a', 'b'], []), 'รีวิวลูกค้า');
+  assert.equal(pickTheme({ theme: '' }, ['a', 'b', 'c'], ['a']), 'b');
+  assert.equal(pickTheme({ theme: '' }, ['a', 'b', 'c'], ['c']), 'a');
+  assert.equal(pickTheme({ theme: '' }, ['a', 'b', 'c'], []), 'a');
+});
+
+test('fb: price check catches invented prices', () => {
+  const styles = [{ id: 3, price: 590, kind: 'main' }, { id: 8, price: 190, kind: 'addon' }];
+  const promos = [{ active: true, type: 'fixed_price', fixed_prices: { 3: 450 }, style_ids: null }];
+  const valid = validPrices(styles, promos, { deposit_amount: 100 }, '2026-11-18');
+  assert.ok(valid.includes(450) && valid.includes(140) && valid.includes(590));
+  assert.equal(priceCheck('ขนตา YY จาก 590 เหลือ 450 บาท ลด ฿140', valid).ok, true);
+  assert.deepEqual(priceCheck('วันนี้เหลือ 399 บาท', valid).bad, [399]);
+  assert.equal(priceCheck('เปิด 10:00–19:00 จองได้ 24 ชม.', valid).ok, true);
+});

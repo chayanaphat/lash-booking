@@ -1,13 +1,14 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1794943205';
+} from './core.js?v=1795017758';
 
 const $app = document.getElementById('app');
 const TABS = [
   ['bookings', '📅 คิว'],
   ['styles', '👁️ ทรงขนตา'],
   ['reviews', '🌟 รีวิว'],
+  ['fbpost', '📣 โพสต์เพจ'],
   ['promos', '🎀 โปรโมชั่น'],
   ['hours', '🕘 เวลาเปิด-ปิด'],
   ['holidays', '🏖️ วันหยุด/ปิดช่วง'],
@@ -65,7 +66,7 @@ const $dlg = () => document.getElementById('dlg');
 
 function show() {
   $view().innerHTML = '<div class="loading" style="min-height:30vh"><div class="spinner"></div></div>';
-  const fn = { bookings, styles, reviews, promos, hours, holidays, users, settings }[st.tab];
+  const fn = { bookings, styles, reviews, fbpost, promos, hours, holidays, users, settings }[st.tab];
   fn().catch((e) => ($view().innerHTML = `<div class="empty">${esc(errText(e))}</div>`));
 }
 
@@ -647,7 +648,7 @@ async function settings() {
 
     <div class="card mt2">
       <b>Rich menu ของ LINE OA</b>
-      <img src="assets/richmenu.jpg?v=1794943205" style="border-radius:10px;margin-top:10px" alt="">
+      <img src="assets/richmenu.jpg?v=1795017758" style="border-radius:10px;margin-top:10px" alt="">
       <div class="tiny muted mt">กดเพื่อตั้งเมนู จองคิว / แต้มสะสม &amp; คิวของฉัน เป็นเมนูหลักของ OA (แทนเมนูเดิม)</div>
       <button class="btn ghost mt" id="richmenu">ติดตั้ง Rich menu</button>
     </div>
@@ -681,7 +682,7 @@ async function settings() {
     if (!confirm('ตั้ง Rich menu นี้เป็นเมนูหลักของ LINE OA?')) return;
     e.target.disabled = true;
     try {
-      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1794943205', location.href).href } });
+      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795017758', location.href).href } });
       toast('ติดตั้ง Rich menu แล้ว ✅ เปิดแชท OA เพื่อดู');
     } catch (err) {
       toast(err.message === 'line_token_missing' ? 'ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Cloudflare' : errText(err) + ' ' + (err.data?.detail || ''), 5000);
@@ -715,4 +716,245 @@ async function settings() {
     await api('/api/admin/admins/' + b.dataset.rmadm, { method: 'DELETE' });
     show();
   }));
+}
+
+// =================================================================== โพสต์เพจ Facebook
+const FB_STATUS = {
+  draft: ['รออนุมัติ', 'fb-warn'], approved: ['อนุมัติแล้ว', 'fb-ok'], posted: ['โพสต์แล้ว', 'fb-ok'],
+  failed: ['ไม่สำเร็จ', 'fb-bad'], skipped: ['ข้าม (ไม่ได้อนุมัติ)', 'fb-mute'],
+};
+const FB_SRC = { ai: 'ร่างโดย Gemini', fallback: 'คอนเทนต์สำรอง', empty: 'ยังไม่มีข้อความ' };
+const DAY_SHORT = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
+const fbPill = (s) => `<span class="fb-pill ${FB_STATUS[s]?.[1] || ''}">${FB_STATUS[s]?.[0] || s}</span>`;
+const fbThumbs = (ids, cls = 'fb-th') => `<div class="fb-thumbs">${ids.map((id) => `<img class="${cls}" src="${imgUrl(id)}" alt="">`).join('')}</div>`;
+
+async function fbpost() {
+  st.fbsub ||= 'drafts';
+  const data = await api('/api/admin/fb');
+  st.fb = data;
+  const sub = (k, l) => `<button class="tab ${st.fbsub === k ? 'on' : ''}" data-fbsub="${k}">${l}</button>`;
+  $view().innerHTML = `<div class="tabs" style="margin-top:0">${sub('drafts', 'ร่างโพสต์')}${sub('schedule', 'ตารางโพสต์ & AI')}${sub('history', 'ประวัติ')}</div><div id="fbv"></div>`;
+  $view().querySelectorAll('[data-fbsub]').forEach((b) => (b.onclick = () => ((st.fbsub = b.dataset.fbsub), fbpost().catch((e) => toast(errText(e))))));
+  await { drafts: fbDrafts, schedule: fbSchedule, history: fbHistory }[st.fbsub]();
+}
+const $fbv = () => document.getElementById('fbv');
+
+function fbStatusCard() {
+  const { configured: c, page } = st.fb;
+  const fbLine = !c.facebook ? '<span class="fb-bad-t">● ยังไม่ได้เชื่อมเพจ (ใส่ FB_PAGE_TOKEN ใน worker)</span>'
+    : page?.error ? `<span class="fb-bad-t">● เชื่อมเพจไม่ได้: ${esc(page.error)}</span>` : `<span class="fb-ok-t">● เพจ ${esc(page?.name || '')} เชื่อมแล้ว</span>`;
+  const aiLine = c.gemini ? '<span class="fb-ok-t">● Gemini พร้อมใช้</span>' : '<span class="fb-bad-t">● ยังไม่ได้ใส่ GEMINI_API_KEY (จะใช้คอนเทนต์สำรองแทน)</span>';
+  return `<div class="card small"><div>${fbLine}</div><div>${aiLine}</div></div>`;
+}
+
+async function fbDrafts() {
+  const { posts, schedules, today } = st.fb;
+  const settings = (await api('/api/admin/settings')).settings;
+  const mode = settings.fb_mode === 'auto' ? 'โพสต์อัตโนมัติ (ไม่ต้องอนุมัติ)' : 'อนุมัติก่อนโพสต์';
+  const groups = {};
+  for (const p of posts) (groups[p.date] ||= []).push(p);
+  $fbv().innerHTML = `${fbStatusCard()}
+    <div class="row between mt"><div class="small muted">โหมด: <b>${mode}</b> · ร่างอัตโนมัติทุกวัน ${esc(settings.fb_draft_time)} น.</div></div>
+    ${schedules.some((s) => s.active) ? `<button class="btn ghost mt" id="fbgen" style="width:100%">✨ ร่างโพสต์ของวันนี้ตอนนี้</button>`
+      : '<div class="empty">ยังไม่มีตารางโพสต์ ไปที่ "ตารางโพสต์ &amp; AI" เพื่อตั้งเวลาโพสต์ก่อน</div>'}
+    ${Object.keys(groups).sort().map((d) => `<div class="section-title mt">${d === today ? 'วันนี้ · ' : ''}${esc(thaiDate(d))}</div>
+      ${groups[d].map(fbCard).join('')}`).join('') || (schedules.some((s) => s.active) ? `<div class="empty">ยังไม่มีร่างของวันนี้ (ระบบร่างให้อัตโนมัติ ${esc(settings.fb_draft_time)} น.)</div>` : '')}`;
+  $fbv().querySelector('#fbgen')?.addEventListener('click', async (ev) => {
+    ev.target.disabled = true; ev.target.textContent = 'กำลังให้ AI ร่าง…';
+    try {
+      const r = await api('/api/admin/fb/generate', { method: 'POST' });
+      toast(r.made.length ? `ร่างแล้ว ${r.made.length} โพสต์` : 'ร่างของวันนี้มีครบแล้ว');
+      await fbpost();
+    } catch (e) { toast(errText(e)); ev.target.disabled = false; }
+  });
+  $fbv().querySelectorAll('[data-fbedit]').forEach((b) => (b.onclick = () => fbEdit(posts.find((p) => p.id === Number(b.dataset.fbedit)))));
+  $fbv().querySelectorAll('[data-fbregen]').forEach((b) => (b.onclick = () => fbRegen(Number(b.dataset.fbregen), '', b)));
+  $fbv().querySelectorAll('[data-fbappr]').forEach((b) => (b.onclick = () => fbSetStatus(posts.find((p) => p.id === Number(b.dataset.fbappr)), b.dataset.to)));
+  $fbv().querySelectorAll('[data-fbpub]').forEach((b) => (b.onclick = () => fbPublish(Number(b.dataset.fbpub), b)));
+}
+
+function fbCard(p) {
+  const editable = !['posted'].includes(p.status);
+  return `<div class="card fb-card">
+    <div class="row" style="gap:8px"><b class="fb-time">${esc(p.time)}</b><span class="tag">${esc(p.theme || '-')}</span><span class="grow"></span>${fbPill(p.status)}</div>
+    ${p.image_ids.length ? fbThumbs(p.image_ids) : ''}
+    <div class="fb-text">${esc(p.text) || '<span class="muted">ยังไม่มีข้อความ กด "แก้" เพื่อเขียน หรือ "สร้างใหม่" ให้ AI ร่าง</span>'}</div>
+    <div class="tiny muted">${FB_SRC[p.source] || ''}${p.price_ok ? ' · <span class="fb-ok-t">✓ ราคาตรงกับระบบ</span>' : ' · <span class="fb-bad-t">⚠ มีราคาที่ไม่ตรงกับระบบ ตรวจก่อนอนุมัติ</span>'}</div>
+    ${p.error ? `<div class="tiny fb-bad-t">${esc(p.error)}</div>` : ''}
+    ${editable ? `<div class="row fb-acts">
+      <button class="btn sm outline" data-fbedit="${p.id}">✏️ แก้</button>
+      <button class="btn sm ghost" data-fbregen="${p.id}">✨ สร้างใหม่</button>
+      ${p.status === 'approved' ? `<button class="btn sm outline" data-fbappr="${p.id}" data-to="draft">ยกเลิกอนุมัติ</button>`
+        : p.status === 'failed' ? `<button class="btn sm" data-fbpub="${p.id}">ลองโพสต์อีกครั้ง</button>`
+        : `<button class="btn sm" data-fbappr="${p.id}" data-to="approved">✅ อนุมัติ</button>`}
+    </div>` : p.fb_post_id ? `<a class="small" href="https://www.facebook.com/${esc(p.fb_post_id)}" target="_blank" rel="noopener">ดูโพสต์บน Facebook →</a>` : ''}
+  </div>`;
+}
+
+async function fbSetStatus(p, status) {
+  try {
+    await api(`/api/admin/fb/posts/${p.id}`, { method: 'PUT', body: { status } });
+    toast(status === 'approved' ? `อนุมัติแล้ว จะโพสต์เวลา ${p.time} น.` : 'ยกเลิกอนุมัติแล้ว');
+    await fbpost();
+  } catch (e) { toast(errText(e)); }
+}
+
+async function fbRegen(id, instruction, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'AI กำลังเขียน…'; }
+  try {
+    const r = await api(`/api/admin/fb/posts/${id}/regenerate`, { method: 'POST', body: { instruction, keep_images: !!instruction } });
+    if (!instruction) { toast('สร้างร่างใหม่แล้ว'); await fbpost(); }
+    return r.post;
+  } catch (e) {
+    toast(e.data?.detail ? `AI ไม่ตอบ: ${e.data.detail}` : errText(e));
+    if (btn) { btn.disabled = false; btn.textContent = '✨ สร้างใหม่'; }
+  }
+}
+
+async function fbPublish(id, btn) {
+  if (!confirm('โพสต์ลงเพจตอนนี้เลยไหม?')) return;
+  if (btn) btn.disabled = true;
+  try {
+    const r = await api(`/api/admin/fb/posts/${id}/publish`, { method: 'POST' });
+    toast(r.ok ? 'โพสต์ลงเพจแล้ว ✅' : `โพสต์ไม่สำเร็จ: ${r.error}`);
+    $dlg().open && $dlg().close();
+    await fbpost();
+  } catch (e) { toast(errText(e)); if (btn) btn.disabled = false; }
+}
+
+async function fbImagePool() {
+  const [{ styles: list }, { albums }] = await Promise.all([api('/api/admin/styles'), api('/api/admin/reviews')]);
+  const ids = [...list.filter((s) => s.image_id).map((s) => s.image_id), ...albums.flatMap((a) => a.photos.map((p) => p.image_id))];
+  return [...new Set(ids)];
+}
+
+async function fbEdit(p) {
+  const pool = await fbImagePool();
+  let picked = [...p.image_ids];
+  const chips = ['สั้นลง', 'เป็นกันเองขึ้น', 'เน้นโปร', 'เพิ่ม hashtag', 'ชวนจองคิวให้ชัดขึ้น'];
+  const pickHtml = () => [...new Set([...picked, ...pool])].map((id) => {
+    const n = picked.indexOf(id) + 1;
+    return `<button type="button" class="fb-pick ${n ? 'on' : ''}" data-img="${esc(id)}"><img src="${imgUrl(id)}" alt="">${n ? `<span>${n}</span>` : ''}</button>`;
+  }).join('');
+  const d = dialog(`แก้โพสต์ ${esc(p.time)} · ${esc(p.theme)}`, `
+    <label class="f" for="fbt">ข้อความ</label>
+    <textarea class="input" id="fbt" rows="8">${esc(p.text)}</textarea>
+    <div class="tiny muted mt">✨ ให้ AI ปรับ</div>
+    <div class="row mt" style="gap:6px;flex-wrap:wrap">${chips.map((c) => `<button type="button" class="chip-btn" data-ai="${esc(c)}">${c}</button>`).join('')}</div>
+    <label class="f mt">รูป (เลือกได้สูงสุด 4 · เรียงตามตัวเลข)</label>
+    <div class="fb-pickgrid" id="fbpick">${pickHtml()}</div>`, {
+    saveText: 'บันทึก + อนุมัติ',
+    extraFoot: `<button class="btn outline" data-only style="flex:1">บันทึก</button>`,
+    onSave: async (dd) => {
+      await api(`/api/admin/fb/posts/${p.id}`, { method: 'PUT', body: { text: val(dd, '#fbt'), image_ids: picked, status: 'approved' } });
+      toast(`อนุมัติแล้ว จะโพสต์เวลา ${p.time} น.`);
+      await fbpost();
+    },
+  });
+  const bindPick = () => d.querySelectorAll('[data-img]').forEach((b) => (b.onclick = () => {
+    const id = b.dataset.img;
+    if (picked.includes(id)) picked = picked.filter((x) => x !== id);
+    else if (picked.length < 4) picked.push(id);
+    else return toast('เลือกได้สูงสุด 4 รูป');
+    d.querySelector('#fbpick').innerHTML = pickHtml();
+    bindPick();
+  }));
+  bindPick();
+  d.querySelector('[data-only]').onclick = async () => {
+    try {
+      await api(`/api/admin/fb/posts/${p.id}`, { method: 'PUT', body: { text: val(d, '#fbt'), image_ids: picked, status: 'draft' } });
+      d.close(); toast('บันทึกแล้ว'); await fbpost();
+    } catch (e) { toast(errText(e)); }
+  };
+  d.querySelectorAll('[data-ai]').forEach((b) => (b.onclick = async () => {
+    await api(`/api/admin/fb/posts/${p.id}`, { method: 'PUT', body: { text: val(d, '#fbt'), image_ids: picked, status: 'draft' } });
+    const label = b.textContent; b.disabled = true; b.textContent = 'กำลังปรับ…';
+    const np = await fbRegen(p.id, b.dataset.ai);
+    b.disabled = false; b.textContent = label;
+    if (np) { d.querySelector('#fbt').value = np.text; toast(np.price_ok ? 'ปรับแล้ว' : '⚠ ปรับแล้ว แต่มีราคาที่ไม่ตรงกับระบบ'); }
+  }));
+}
+
+async function fbSchedule() {
+  const { schedules, themes, fallbacks } = st.fb;
+  const s = (await api('/api/admin/settings')).settings;
+  const on = new Set(s.fb_themes.split(',').map((t) => t.trim()));
+  $fbv().innerHTML = `
+    <div class="section-title">เวลาโพสต์</div>
+    ${schedules.map((x) => `<div class="card row fb-sched">
+      <b class="fb-time">${esc(x.time)}</b>
+      <div class="grow"><div class="small"><b>${x.days.length === 7 ? 'ทุกวัน' : x.days.map((d) => DAY_SHORT[d]).join(' · ')}</b></div>
+        <div class="tiny muted">${x.theme ? `ธีม: ${esc(x.theme)}` : 'ธีมหมุนเวียน'}${x.active ? '' : ' · ปิดอยู่'}</div></div>
+      <button class="btn sm outline" data-sched="${x.id}">แก้</button></div>`).join('') || '<div class="empty" style="padding:12px 0">ยังไม่มีเวลาโพสต์</div>'}
+    <button class="btn ghost" id="addsched" style="width:100%">+ เพิ่มเวลาโพสต์</button>
+
+    <div class="section-title mt">ตั้งค่า AI</div>
+    <div class="card">
+      <label class="f">โหมด</label>
+      <select class="input" id="fbmode"><option value="approve" ${s.fb_mode !== 'auto' ? 'selected' : ''}>อนุมัติก่อนโพสต์ (แนะนำ)</option><option value="auto" ${s.fb_mode === 'auto' ? 'selected' : ''}>โพสต์อัตโนมัติ ไม่ต้องอนุมัติ</option></select>
+      <label class="f">ธีมที่ให้ AI หมุนเวียน</label>
+      <div class="row" style="gap:6px;flex-wrap:wrap">${themes.map((t) => `<label class="chip-btn"><input type="checkbox" data-theme="${esc(t)}" ${on.has(t) ? 'checked' : ''}> ${esc(t)}</label>`).join('')}</div>
+      <label class="f" for="fbtone">โทนภาษาของร้าน</label><textarea class="input" id="fbtone" rows="2">${esc(s.fb_tone)}</textarea>
+      <div class="row" style="gap:10px">
+        <div class="grow"><label class="f" for="fbdraft">ร่างล่วงหน้าทุกวันเวลา</label><input class="input" type="time" id="fbdraft" value="${esc(s.fb_draft_time)}"></div>
+        <div class="grow"><label class="f" for="fbmodel">โมเดล Gemini</label><input class="input" id="fbmodel" value="${esc(s.fb_model)}"></div>
+      </div>
+      <button class="btn mt" id="savefb" style="width:100%">บันทึกตั้งค่า AI</button>
+    </div>
+
+    <div class="section-title mt">คอนเทนต์สำรอง (${fallbacks.length})</div>
+    <div class="small muted">ใช้แทนเมื่อ AI ใช้ไม่ได้ เช่น โควต้าฟรีหมด</div>
+    ${fallbacks.map((f) => `<div class="card row"><div class="grow fb-text small" style="max-height:80px">${esc(f.text)}</div><button class="btn sm outline" data-delfb="${f.id}">ลบ</button></div>`).join('')}
+    <button class="btn ghost mt" id="addfb" style="width:100%">+ เพิ่มคอนเทนต์สำรอง</button>`;
+
+  $fbv().querySelector('#addsched').onclick = () => fbSchedForm();
+  $fbv().querySelectorAll('[data-sched]').forEach((b) => (b.onclick = () => fbSchedForm(schedules.find((x) => x.id === Number(b.dataset.sched)))));
+  $fbv().querySelector('#savefb').onclick = async () => {
+    const th = [...$fbv().querySelectorAll('[data-theme]:checked')].map((c) => c.dataset.theme);
+    if (!th.length) return toast('เลือกธีมอย่างน้อย 1 ธีม');
+    try {
+      await api('/api/admin/settings', { method: 'PUT', body: { fb_mode: val($fbv(), '#fbmode'), fb_themes: th.join(','), fb_tone: val($fbv(), '#fbtone'), fb_draft_time: val($fbv(), '#fbdraft') || '07:00', fb_model: val($fbv(), '#fbmodel') || 'gemini-flash-latest' } });
+      toast('บันทึกแล้ว');
+    } catch (e) { toast(errText(e)); }
+  };
+  $fbv().querySelector('#addfb').onclick = () => dialog('คอนเทนต์สำรอง', `<label class="f" for="fbft">ข้อความ</label><textarea class="input" id="fbft" rows="7" placeholder="เขียนโพสต์ที่ใช้ได้ทุกเมื่อ เช่น แนะนำร้าน + ลิงก์จองคิว"></textarea>`, {
+    onSave: async (d) => { await api('/api/admin/fb/fallbacks', { method: 'POST', body: { text: val(d, '#fbft') } }); await fbpost(); },
+  });
+  $fbv().querySelectorAll('[data-delfb]').forEach((b) => (b.onclick = async () => {
+    if (!confirm('ลบคอนเทนต์สำรองนี้?')) return;
+    await api(`/api/admin/fb/fallbacks/${b.dataset.delfb}`, { method: 'DELETE' }); await fbpost();
+  }));
+}
+
+function fbSchedForm(x) {
+  const days = new Set(x ? x.days : [0, 1, 2, 3, 4, 5, 6]);
+  dialog(x ? 'แก้เวลาโพสต์' : 'เพิ่มเวลาโพสต์', `
+    <label class="f" for="sct">เวลา</label><input class="input" type="time" id="sct" value="${esc(x?.time || '10:00')}">
+    <label class="f">วัน</label>
+    <div class="row" style="gap:6px;flex-wrap:wrap">${DAY_SHORT.map((l, i) => `<label class="chip-btn"><input type="checkbox" data-day="${i}" ${days.has(i) ? 'checked' : ''}> ${l}</label>`).join('')}</div>
+    <label class="f" for="scth">ธีม</label>
+    <select class="input" id="scth"><option value="">หมุนเวียนตามตั้งค่า AI</option>${st.fb.themes.map((t) => `<option ${x?.theme === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select>
+    <label class="row mt" style="gap:8px"><input type="checkbox" id="scon" ${!x || x.active ? 'checked' : ''}> เปิดใช้</label>`, {
+    extraFoot: x ? '<button class="btn outline" data-del style="flex:1">ลบ</button>' : '',
+    onSave: async (d) => {
+      const body = { time: val(d, '#sct'), days: [...d.querySelectorAll('[data-day]:checked')].map((c) => Number(c.dataset.day)), theme: val(d, '#scth'), active: d.querySelector('#scon').checked };
+      await api(x ? `/api/admin/fb/schedules/${x.id}` : '/api/admin/fb/schedules', { method: x ? 'PUT' : 'POST', body });
+      await fbpost();
+    },
+  });
+  $dlg().querySelector('[data-del]')?.addEventListener('click', async () => {
+    if (!confirm('ลบเวลาโพสต์นี้?')) return;
+    await api(`/api/admin/fb/schedules/${x.id}`, { method: 'DELETE' }); $dlg().close(); await fbpost();
+  });
+}
+
+async function fbHistory() {
+  const { posts } = await api('/api/admin/fb/history');
+  $fbv().innerHTML = posts.map((p) => `<div class="card row fb-hist">
+    ${p.image_ids[0] ? `<img class="fb-th" src="${imgUrl(p.image_ids[0])}" alt="">` : '<div class="fb-th"></div>'}
+    <div class="grow" style="min-width:0">
+      <div class="row" style="gap:6px"><b class="small">${esc(thaiDate(p.date))} · ${esc(p.time)}</b><span class="tag">${esc(p.theme)}</span><span class="grow"></span>${fbPill(p.status)}</div>
+      <div class="tiny muted fb-one">${esc(p.text)}</div>
+      ${p.fb_post_id ? `<a class="tiny" href="https://www.facebook.com/${esc(p.fb_post_id)}" target="_blank" rel="noopener">ดูบน Facebook →</a>` : p.error ? `<div class="tiny fb-bad-t">${esc(p.error)}</div>` : ''}
+    </div></div>`).join('') || '<div class="empty">ยังไม่มีประวัติ</div>';
 }

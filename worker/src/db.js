@@ -27,6 +27,12 @@ export const DEFAULT_SETTINGS = {
   remind_day_before: 1, // push เตือนนัดล่วงหน้า 1 วัน พร้อมแผนที่
   remind_hour: 18, // เวลาที่ส่งเตือน (ชั่วโมง, เวลาไทย)
   policy_text: 'มัดจำ 100 บาท (ที่เหลือชำระวันทำ)',
+  // ---- โพสต์เพจ Facebook อัตโนมัติ
+  fb_mode: 'approve', // approve = โพสต์เฉพาะที่แอดมินอนุมัติ · auto = โพสต์ร่างได้เลย
+  fb_themes: 'โชว์ทรง,โปรโมชัน,รีวิวลูกค้า,ชวนจองคิวว่าง,ทิปดูแลขนตา',
+  fb_tone: 'เป็นกันเอง อบอุ่น ลงท้ายด้วย "ค่ะ" ใช้อีโมจิ 💜 ✨ ไม่เกิน 3–4 ตัว',
+  fb_draft_time: '07:00', // เวลาที่ให้ AI ร่างโพสต์ของวัน
+  fb_model: 'gemini-flash-latest',
 };
 const NUMERIC = new Set(
   Object.entries(DEFAULT_SETTINGS)

@@ -14,6 +14,8 @@ database_id = "ad0cfe80-86d0-406b-b2fe-c5ff06d7bcd0"
 crons = ["*/10 * * * *"]
 
 [vars]
+# URL ของ worker นี้ (Facebook ดึงรูปผลงานจาก /img/:id)
+PUBLIC_API_URL = "https://lash-booking-api.k-chayanaphat.workers.dev"
 LIFF_ID = "2012646909-vMsNI4wU"
 LINE_LOGIN_CHANNEL_ID = "2012646909"
 # LINE userId ของแอดมิน 2 คน คั่นด้วย , (ดูได้ที่หน้า admin.html ตอนยังไม่มีสิทธิ์)
