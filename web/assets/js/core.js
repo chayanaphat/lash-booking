@@ -1,4 +1,4 @@
-import { CONFIG } from './config.js?v=1795021816';
+import { CONFIG } from './config.js?v=1795023629';
 
 let idToken = null;
 let devUser = null;
@@ -105,6 +105,7 @@ export const STATUS = {
   cancelled: 'ยกเลิก',
 };
 export const ERR = {
+  too_many_images: 'ใส่รูปได้สูงสุด 5 รูปต่อทรง',
   slot_unavailable: 'ขออภัย เวลานี้เพิ่งถูกจองไป กรุณาเลือกเวลาใหม่',
   has_pending_booking: 'คุณมีคิวที่รอชำระมัดจำอยู่ กรุณาชำระหรือยกเลิกก่อน',
   phone_required: 'กรุณากรอกเบอร์โทรให้ถูกต้อง',

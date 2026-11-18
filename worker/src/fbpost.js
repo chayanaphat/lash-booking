@@ -133,7 +133,7 @@ ${current ? `\nร่างปัจจุบัน:\n${current}\nสิ่ง�
 - แบ่งเป็น 3–6 บรรทัดสั้น ๆ คั่นแต่ละบรรทัดด้วยการขึ้นบรรทัดใหม่ (\\n ใน JSON) อ่านง่ายบนมือถือ
 - บรรทัดสุดท้ายเป็น "📅 จองคิว 👉 " ตามด้วยลิงก์จองคิว
 - ถ้าพูดถึงราคา ต้องตรงกับข้อมูลข้างบนทุกตัวเลข
-- เลือก id บริการที่เกี่ยวข้องที่สุด 1–3 รายการ เพื่อใช้รูปผลงานของบริการนั้นประกอบโพสต์
+- เลือก id บริการที่เกี่ยวข้องที่สุด 1–3 รายการ ระบบจะใช้รูปผลงานของบริการนั้นประกอบโพสต์ (วนรูปให้เอง)
 ตอบเป็น JSON เท่านั้น: {"text": "...", "style_ids": [..]}`;
 }
 
@@ -176,15 +176,33 @@ async function gemini(env, settings, prompt) {
   throw last;
 }
 
-function imagesFor(ctx, styleIds, theme) {
+/** เลือกรูปที่ใช้ไม่นานที่สุดก่อน (ยังไม่เคยใช้ = ก่อนสุด) — รูปจึงวนครบทุกรูปในแกลเลอรี */
+export function rotateImages(images, recentUsed, n) {
+  const lastUse = (id) => {
+    const i = recentUsed.indexOf(id);
+    return i === -1 ? Infinity : i; // index 0 = ใช้ล่าสุด
+  };
+  return [...images].sort((a, b) => lastUse(b) - lastUse(a)).slice(0, n);
+}
+
+export function imagesFor(ctx, styleIds, theme, recentUsed = []) {
   const imgs = [];
-  if (theme === 'รีวิวลูกค้า') for (const a of ctx.albums) for (const p of a.photos) imgs.push(p.image_id);
-  for (const id of styleIds) {
-    const s = ctx.styles.find((x) => x.id === id);
-    if (s?.image_id) imgs.push(s.image_id);
+  if (theme === 'รีวิวลูกค้า') imgs.push(...rotateImages(ctx.albums.flatMap((a) => a.photos.map((p) => p.image_id)), recentUsed, 4));
+  const chosen = styleIds.map((id) => ctx.styles.find((x) => x.id === id)).filter((s) => s?.gallery?.length);
+  const per = chosen.length ? Math.max(1, Math.min(3, Math.floor(4 / chosen.length))) : 0;
+  for (const s of chosen) imgs.push(...rotateImages(s.gallery, recentUsed, per));
+  if (!imgs.length) {
+    const all = ctx.styles.filter((s) => s.kind !== 'addon').flatMap((s) => s.gallery || []);
+    imgs.push(...rotateImages(all, recentUsed, 3));
   }
-  if (!imgs.length) for (const s of ctx.styles) if (s.image_id && s.kind !== 'addon') imgs.push(s.image_id);
   return [...new Set(imgs)].slice(0, 4);
+}
+
+async function recentImages(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT image_ids FROM fb_posts WHERE status IN ('posted','approved','draft') ORDER BY date DESC, time DESC LIMIT 40`,
+  ).all();
+  return results.flatMap((r) => parseJSON(r.image_ids, []));
 }
 
 async function recentPosts(env, limit = 10) {
@@ -203,7 +221,7 @@ export async function composeDraft(env, { date, theme, instruction = '', current
       const [recentAll, free] = await Promise.all([recentPosts(env), freeSlotsTomorrow(env, date, ctx.settings)]);
       const recent = recentAll.filter((r) => r.text.trim() !== current.trim());
       const out = await gemini(env, ctx.settings, buildPrompt(env, ctx, theme, recent, free, instruction, current));
-      return { text: out.text, image_ids: imagesFor(ctx, out.style_ids, theme), source: 'ai', price_ok: priceCheck(out.text, prices).ok };
+      return { text: out.text, image_ids: imagesFor(ctx, out.style_ids, theme, await recentImages(env)), source: 'ai', price_ok: priceCheck(out.text, prices).ok };
     } catch (e) {
       console.error('gemini', e);
       if (current) throw e; // กดสร้างใหม่เอง → แจ้ง error ให้แอดมินเห็น
@@ -212,9 +230,9 @@ export async function composeDraft(env, { date, theme, instruction = '', current
   const fb = await env.DB.prepare('SELECT * FROM fb_fallbacks ORDER BY RANDOM() LIMIT 1').first();
   if (fb) {
     const own = parseJSON(fb.image_ids, []);
-    return { text: fb.text, image_ids: own.length ? own : imagesFor(ctx, [], theme), source: 'fallback', price_ok: priceCheck(fb.text, prices).ok };
+    return { text: fb.text, image_ids: own.length ? own : imagesFor(ctx, [], theme, await recentImages(env)), source: 'fallback', price_ok: priceCheck(fb.text, prices).ok };
   }
-  return { text: '', image_ids: imagesFor(ctx, [], theme), source: 'empty', price_ok: true };
+  return { text: '', image_ids: imagesFor(ctx, [], theme, await recentImages(env)), source: 'empty', price_ok: true };
 }
 
 // ---------------------------------------------------------------- drafts / publish

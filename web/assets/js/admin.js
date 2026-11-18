@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1795021816';
+} from './core.js?v=1795023629';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -220,11 +220,20 @@ async function styles() {
 }
 
 function styleForm(s) {
+  const MAX_IMG = 5;
   let imageId = s.image_id || null;
+  let gallery = [...(s.gallery || (imageId ? [imageId] : []))];
+  const galHtml = () => gallery.map((id) => `
+      <div class="gal-item ${id === imageId ? 'cover' : ''}">
+        <button type="button" class="gal-img" data-cover="${esc(id)}" aria-label="ตั้งเป็นรูปหลัก"><img src="${imgUrl(id)}" alt=""></button>
+        ${id === imageId ? '<span class="gal-badge">⭐ รูปหลัก</span>' : ''}
+        <button type="button" class="gal-x" data-rm="${esc(id)}" aria-label="ลบรูป">✕</button>
+      </div>`).join('') + (gallery.length < MAX_IMG ? '<button type="button" class="gal-add" id="pick">+ เพิ่มรูป</button>' : '');
   const d = dialog(s.id ? 'แก้ไขทรง' : 'เพิ่มทรง', `
-    <label class="f">รูป</label>
-    <div class="row"><div class="thumb" id="pv" style="width:96px;height:96px;flex-basis:96px;background-size:cover;background-position:center;${imageId ? `background-image:url(${imgUrl(imageId)})` : ''}">${imageId ? '' : '👁️'}</div>
-      <div><input type="file" accept="image/*" id="file" class="hidden"><button class="btn sm ghost" id="pick">เลือกรูป</button><div class="tiny muted mt">ระบบย่อรูปให้อัตโนมัติ</div></div></div>
+    <label class="f">รูปผลงาน <span class="tiny muted">(สูงสุด ${MAX_IMG} รูป · แตะรูปเพื่อตั้งเป็นรูปหลักที่โชว์ในหน้าจอง)</span></label>
+    <input type="file" accept="image/*" multiple id="file" class="hidden">
+    <div class="gal" id="gal">${galHtml()}</div>
+    <div class="tiny muted mt">โพสต์เพจอัตโนมัติจะวนใช้ทุกรูปในนี้ · ระบบย่อรูปให้อัตโนมัติ</div>
     <label class="f">ชื่อทรง / บริการ</label><input class="input" id="name" value="${esc(s.name)}" maxlength="80">
     <div class="grid2">
       <div><label class="f">หมวด (หัวข้อในหน้าจอง)</label><input class="input" id="cat" list="cats" value="${esc(s.category || '')}" maxlength="60">
@@ -246,27 +255,41 @@ function styleForm(s) {
     onSave: async (d) => {
       await api(`/api/admin/styles${s.id ? '/' + s.id : ''}`, {
         method: s.id ? 'PUT' : 'POST',
-        body: { name: val(d, '#name'), description: val(d, '#desc'), price: val(d, '#price'), duration_min: val(d, '#dur'), sort: val(d, '#sort'), active: val(d, '#active') === '1', image_id: imageId, category: val(d, '#cat'), kind: val(d, '#kind'), stamps: val(d, '#stamps'), redeemable: val(d, '#redeem') },
+        body: { name: val(d, '#name'), description: val(d, '#desc'), price: val(d, '#price'), duration_min: val(d, '#dur'), sort: val(d, '#sort'), active: val(d, '#active') === '1', image_id: imageId, gallery, category: val(d, '#cat'), kind: val(d, '#kind'), stamps: val(d, '#stamps'), redeemable: val(d, '#redeem') },
       });
       toast('บันทึกแล้ว');
       show();
     },
   });
   const file = d.querySelector('#file');
-  d.querySelector('#pick').onclick = () => file.click();
+  const renderGal = () => {
+    d.querySelector('#gal').innerHTML = galHtml();
+    d.querySelector('#pick')?.addEventListener('click', () => file.click());
+    d.querySelectorAll('[data-cover]').forEach((b) => (b.onclick = () => ((imageId = b.dataset.cover), renderGal())));
+    d.querySelectorAll('[data-rm]').forEach((b) => (b.onclick = () => {
+      gallery = gallery.filter((x) => x !== b.dataset.rm);
+      if (imageId === b.dataset.rm) imageId = gallery[0] || null;
+      renderGal();
+    }));
+  };
+  renderGal();
   file.onchange = async () => {
-    if (!file.files[0]) return;
-    const pv = d.querySelector('#pv');
-    pv.textContent = '⏳';
-    try {
-      const { dataUrl } = await loadImage(file.files[0], 1080, 0.85);
-      imageId = (await api('/api/admin/images', { method: 'POST', body: { image: dataUrl } })).id;
-      pv.style.backgroundImage = `url(${dataUrl})`;
-      pv.textContent = '';
-    } catch (e) {
-      pv.textContent = '⚠️';
-      toast(errText(e));
+    const files = [...file.files].slice(0, MAX_IMG - gallery.length);
+    if (file.files.length > files.length) toast(`ใส่ได้สูงสุด ${MAX_IMG} รูป เพิ่มแค่ ${files.length} รูปแรก`);
+    const add = d.querySelector('#pick');
+    if (add) add.textContent = '⏳ กำลังอัปโหลด…';
+    for (const f of files) {
+      try {
+        const { dataUrl } = await loadImage(f, 1080, 0.85);
+        const id = (await api('/api/admin/images', { method: 'POST', body: { image: dataUrl } })).id;
+        gallery.push(id);
+        if (!imageId) imageId = id;
+      } catch (e) {
+        toast(errText(e));
+      }
     }
+    file.value = '';
+    renderGal();
   };
   d.querySelector('#del')?.addEventListener('click', async () => {
     if (!confirm('ลบทรงนี้? (การจองเก่าไม่ได้รับผลกระทบ) แนะนำให้ "ซ่อน" แทนถ้ายังอยากเก็บไว้')) return;
@@ -648,7 +671,7 @@ async function settings() {
 
     <div class="card mt2">
       <b>Rich menu ของ LINE OA</b>
-      <img src="assets/richmenu.jpg?v=1795021816" style="border-radius:10px;margin-top:10px" alt="">
+      <img src="assets/richmenu.jpg?v=1795023629" style="border-radius:10px;margin-top:10px" alt="">
       <div class="tiny muted mt">กดเพื่อตั้งเมนู จองคิว / แต้มสะสม &amp; คิวของฉัน เป็นเมนูหลักของ OA (แทนเมนูเดิม)</div>
       <button class="btn ghost mt" id="richmenu">ติดตั้ง Rich menu</button>
     </div>
@@ -682,7 +705,7 @@ async function settings() {
     if (!confirm('ตั้ง Rich menu นี้เป็นเมนูหลักของ LINE OA?')) return;
     e.target.disabled = true;
     try {
-      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795021816', location.href).href } });
+      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795023629', location.href).href } });
       toast('ติดตั้ง Rich menu แล้ว ✅ เปิดแชท OA เพื่อดู');
     } catch (err) {
       toast(err.message === 'line_token_missing' ? 'ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Cloudflare' : errText(err) + ' ' + (err.data?.detail || ''), 5000);

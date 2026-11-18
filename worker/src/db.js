@@ -88,13 +88,27 @@ export async function ensureStyleStamps(env) {
   } catch (e) {
     if (!/duplicate column/i.test(String(e?.message || e))) throw e;
   }
+  // styles.gallery = รูปผลงานทั้งหมดของทรง (JSON array ของ image id) · image_id = รูปหลักที่โชว์ในหน้าจอง
+  try {
+    await env.DB.prepare("ALTER TABLE styles ADD COLUMN gallery TEXT NOT NULL DEFAULT '[]'").run();
+    await env.DB.prepare(`UPDATE styles SET gallery = json_array(image_id) WHERE image_id IS NOT NULL AND image_id <> ''`).run();
+  } catch (e) {
+    if (!/duplicate column/i.test(String(e?.message || e))) throw e;
+  }
   stylesStampsReady = true;
+}
+/** รูปทั้งหมดของทรง โดยรูปหลักอยู่หน้าสุด */
+export function styleGallery(s) {
+  const g = parseJSON(s.gallery, []);
+  const list = Array.isArray(g) ? g.filter(Boolean) : [];
+  if (s.image_id && !list.includes(s.image_id)) list.unshift(s.image_id);
+  return s.image_id ? [s.image_id, ...list.filter((x) => x !== s.image_id)] : list;
 }
 export async function getStyles(env, { activeOnly = false } = {}) {
   await ensureStyleStamps(env);
   const sql = `SELECT * FROM styles ${activeOnly ? 'WHERE active = 1' : ''} ORDER BY sort, id`;
   const { results } = await env.DB.prepare(sql).all();
-  return results;
+  return results.map((r) => ({ ...r, gallery: styleGallery(r) }));
 }
 export const styleMap = (list) => Object.fromEntries(list.map((s) => [s.id, s]));
 

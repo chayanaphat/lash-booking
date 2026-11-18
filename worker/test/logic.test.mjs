@@ -145,3 +145,13 @@ test('fb: price check catches invented prices', () => {
   assert.deepEqual(priceCheck('วันนี้เหลือ 399 บาท', valid).bad, [399]);
   assert.equal(priceCheck('เปิด 10:00–19:00 จองได้ 24 ชม.', valid).ok, true);
 });
+
+import { imagesFor, rotateImages } from '../src/fbpost.js';
+test('fb: images rotate through the gallery, least recently used first', () => {
+  assert.deepEqual(rotateImages(['a', 'b', 'c'], [], 2), ['a', 'b']);
+  assert.deepEqual(rotateImages(['a', 'b', 'c'], ['a', 'b'], 2), ['c', 'b']);
+  assert.deepEqual(rotateImages(['a', 'b', 'c'], ['c', 'a', 'b'], 1), ['b']);
+  const ctx = { albums: [], styles: [{ id: 1, kind: 'main', gallery: ['x1', 'x2', 'x3', 'x4'] }, { id: 2, kind: 'main', gallery: ['y1', 'y2'] }] };
+  assert.deepEqual(imagesFor(ctx, [1], 'โชว์ทรง', ['x1']), ['x2', 'x3', 'x4']);
+  assert.deepEqual(imagesFor(ctx, [1, 2], 'โชว์ทรง', ['x2', 'y1']), ['x1', 'x3', 'y2', 'y1']);
+});

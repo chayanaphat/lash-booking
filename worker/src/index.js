@@ -196,7 +196,14 @@ function styleInput(b) {
     kind: b.kind === 'addon' ? 'addon' : 'main',
     stamps: Math.min(5, Math.max(0, int(b.stamps, 0))),
     redeemable: b.redeemable === true || b.redeemable === 1 || b.redeemable === '1' ? 1 : 0,
+    gallery: JSON.stringify([...new Set((Array.isArray(b.gallery) ? b.gallery : []).map((x) => str(x, 64)).filter(Boolean))]),
   };
+  // รูปหลักต้องอยู่ในแกลเลอรี · ไม่ได้เลือกรูปหลัก = ใช้รูปแรก
+  const g = JSON.parse(s.gallery);
+  if (s.image_id && !g.includes(s.image_id)) g.unshift(s.image_id);
+  if (!s.image_id && g.length) s.image_id = g[0];
+  if (g.length > 5) throw new HttpError(400, 'too_many_images'); // สูงสุด 5 รูปต่อทรง
+  s.gallery = JSON.stringify(g);
   if (!s.name || s.price < 0 || s.duration_min < 15) throw new HttpError(400, 'invalid_style');
   return s;
 }
@@ -204,15 +211,15 @@ on('GET', '/api/admin/styles', 'admin', async ({ env }) => json({ styles: await 
 on('POST', '/api/admin/styles', 'admin', async ({ env, req }) => {
   const s = styleInput(await readJson(req));
   await ensureStyleStamps(env);
-  const r = await env.DB.prepare('INSERT INTO styles (name, description, price, duration_min, image_id, sort, active, category, kind, stamps, redeemable) VALUES (?,?,?,?,?,?,?,?,?,?,?)')
-    .bind(s.name, s.description, s.price, s.duration_min, s.image_id, s.sort, s.active, s.category, s.kind, s.stamps, s.redeemable).run();
+  const r = await env.DB.prepare('INSERT INTO styles (name, description, price, duration_min, image_id, sort, active, category, kind, stamps, redeemable, gallery) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+    .bind(s.name, s.description, s.price, s.duration_min, s.image_id, s.sort, s.active, s.category, s.kind, s.stamps, s.redeemable, s.gallery).run();
   return json({ id: r.meta.last_row_id }, 201);
 });
 on('PUT', '/api/admin/styles/:id', 'admin', async ({ env, req, params }) => {
   const s = styleInput(await readJson(req));
   await ensureStyleStamps(env);
-  await env.DB.prepare('UPDATE styles SET name=?, description=?, price=?, duration_min=?, image_id=?, sort=?, active=?, category=?, kind=?, stamps=?, redeemable=? WHERE id=?')
-    .bind(s.name, s.description, s.price, s.duration_min, s.image_id, s.sort, s.active, s.category, s.kind, s.stamps, s.redeemable, int(params.id)).run();
+  await env.DB.prepare('UPDATE styles SET name=?, description=?, price=?, duration_min=?, image_id=?, sort=?, active=?, category=?, kind=?, stamps=?, redeemable=?, gallery=? WHERE id=?')
+    .bind(s.name, s.description, s.price, s.duration_min, s.image_id, s.sort, s.active, s.category, s.kind, s.stamps, s.redeemable, s.gallery, int(params.id)).run();
   return json({ ok: true });
 });
 on('DELETE', '/api/admin/styles/:id', 'admin', async ({ env, params }) => {
