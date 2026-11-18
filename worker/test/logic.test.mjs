@@ -155,3 +155,11 @@ test('fb: images rotate through the gallery, least recently used first', () => {
   assert.deepEqual(imagesFor(ctx, [1], 'โชว์ทรง', ['x1']), ['x2', 'x3', 'x4']);
   assert.deepEqual(imagesFor(ctx, [1, 2], 'โชว์ทรง', ['x2', 'y1']), ['x1', 'x3', 'y2', 'y1']);
 });
+
+import { nextPhoneEmoji } from '../src/fbpost.js';
+test('fb: phone emoji rotates 🤙🏻 → 📞 → 📱', () => {
+  assert.equal(nextPhoneEmoji([]), '🤙🏻');
+  assert.equal(nextPhoneEmoji(['โทร 🤙🏻 098', 'x']), '📞');
+  assert.equal(nextPhoneEmoji(['ไม่มีเบอร์', '📞 098']), '📱');
+  assert.equal(nextPhoneEmoji(['📱 098']), '🤙🏻');
+});

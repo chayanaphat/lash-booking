@@ -101,7 +101,17 @@ async function freeSlotsTomorrow(env, date, settings) {
   }
 }
 
-function buildPrompt(env, ctx, theme, recent, freeTomorrow, instruction, current) {
+export const PHONE_EMOJIS = ['🤙🏻', '📞', '📱'];
+/** สลับอีโมจิหน้าเบอร์โทร: ใช้ตัวถัดจากที่โพสต์ล่าสุดใช้ */
+export function nextPhoneEmoji(recentTexts) {
+  for (const t of recentTexts) {
+    const i = PHONE_EMOJIS.findIndex((e) => t.includes(e));
+    if (i !== -1) return PHONE_EMOJIS[(i + 1) % PHONE_EMOJIS.length];
+  }
+  return PHONE_EMOJIS[0];
+}
+
+function buildPrompt(env, ctx, theme, recent, freeTomorrow, instruction, current, phoneEmoji = PHONE_EMOJIS[0]) {
   const { settings: s, styles, promoList } = ctx;
   const styleLines = styles.map((x) => `- id ${x.id}: ${x.name} ราคา ${x.price} บาท (${x.kind === 'addon' ? 'บริการเสริม' : 'บริการหลัก'}) — ${String(x.description || '').replace(/\s+/g, ' ').slice(0, 160)}`).join('\n');
   const promoLines = promoList.length
@@ -220,7 +230,7 @@ export async function composeDraft(env, { date, theme, instruction = '', current
     try {
       const [recentAll, free] = await Promise.all([recentPosts(env), freeSlotsTomorrow(env, date, ctx.settings)]);
       const recent = recentAll.filter((r) => r.text.trim() !== current.trim());
-      const out = await gemini(env, ctx.settings, buildPrompt(env, ctx, theme, recent, free, instruction, current));
+      const out = await gemini(env, ctx.settings, buildPrompt(env, ctx, theme, recent, free, instruction, current, nextPhoneEmoji(recentAll.map((r) => r.text))));
       return { text: out.text, image_ids: imagesFor(ctx, out.style_ids, theme, await recentImages(env)), source: 'ai', price_ok: priceCheck(out.text, prices).ok };
     } catch (e) {
       console.error('gemini', e);
