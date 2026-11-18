@@ -113,6 +113,7 @@ export function nextPhoneEmoji(recentTexts) {
 
 function buildPrompt(env, ctx, theme, recent, freeTomorrow, instruction, current, phoneEmoji = PHONE_EMOJIS[0]) {
   const { settings: s, styles, promoList } = ctx;
+  const phone = (s.fb_phone || s.shop_phone || '').trim(); // เบอร์สำหรับโพสต์เพจ แยกจากเบอร์ที่แสดงในหน้าจอง
   const styleLines = styles.map((x) => `- id ${x.id}: ${x.name} ราคา ${x.price} บาท (${x.kind === 'addon' ? 'บริการเสริม' : 'บริการหลัก'}) — ${String(x.description || '').replace(/\s+/g, ' ').slice(0, 160)}`).join('\n');
   const promoLines = promoList.length
     ? promoList.map((p) => {
@@ -128,7 +129,7 @@ function buildPrompt(env, ctx, theme, recent, freeTomorrow, instruction, current
 โทนภาษา: ${s.fb_tone}
 
 ข้อมูลร้าน (ใช้เฉพาะข้อมูลนี้ ห้ามแต่งราคา โปร หรือบริการที่ไม่มี):
-ร้านอยู่หนองคาย${s.shop_phone ? `\nเบอร์โทรร้าน: ${s.shop_phone}` : ''}
+ร้านอยู่หนองคาย${phone ? `\nเบอร์โทรร้าน: ${phone}` : ''}
 บริการและราคา:
 ${styleLines}
 โปรโมชันที่ใช้ได้ตอนนี้:
@@ -142,7 +143,7 @@ ${current ? `\nร่างปัจจุบัน:\n${current}\nสิ่ง�
 ข้อกำหนด:
 - แบ่งเป็น 3–6 บรรทัดสั้น ๆ คั่นแต่ละบรรทัดด้วยการขึ้นบรรทัดใหม่ (\\n ใน JSON) อ่านง่ายบนมือถือ
 - บรรทัดสุดท้ายเป็น "📅 จองคิว 👉 " ตามด้วยลิงก์จองคิว
-- ถ้าพูดถึงราคา ต้องตรงกับข้อมูลข้างบนทุกตัวเลข${s.shop_phone ? `\n- ถ้าใส่เบอร์โทร ให้เขียนเป็น "${phoneEmoji} ${s.shop_phone}" ตรงตามนี้ทุกตัวอักษร` : ''}
+- ถ้าพูดถึงราคา ต้องตรงกับข้อมูลข้างบนทุกตัวเลข${phone ? `\n- ถ้าใส่เบอร์โทร ให้เขียนเป็น "${phoneEmoji} ${phone}" ตรงตามนี้ทุกตัวอักษร` : ''}
 - เลือก id บริการที่เกี่ยวข้องที่สุด 1–3 รายการ ระบบจะใช้รูปผลงานของบริการนั้นประกอบโพสต์ (วนรูปให้เอง)
 ตอบเป็น JSON เท่านั้น: {"text": "...", "style_ids": [..]}`;
 }

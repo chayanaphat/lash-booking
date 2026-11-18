@@ -33,6 +33,7 @@ export const DEFAULT_SETTINGS = {
   fb_tone: 'เป็นกันเอง อบอุ่น ลงท้ายด้วย "ค่ะ" ใช้อีโมจิ 💜 ✨ ไม่เกิน 3–4 ตัว',
   fb_draft_time: '07:00', // เวลาที่ให้ AI ร่างโพสต์ของวัน
   fb_model: 'gemini-flash-latest',
+  fb_phone: '', // เบอร์ที่ใส่ในโพสต์เพจ (ว่าง = ใช้เบอร์ร้าน) เช่น 098-450-4663 (ทราย)
 };
 const NUMERIC = new Set(
   Object.entries(DEFAULT_SETTINGS)

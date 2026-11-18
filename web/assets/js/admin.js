@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1795024090';
+} from './core.js?v=1795025593';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -671,7 +671,7 @@ async function settings() {
 
     <div class="card mt2">
       <b>Rich menu ของ LINE OA</b>
-      <img src="assets/richmenu.jpg?v=1795024090" style="border-radius:10px;margin-top:10px" alt="">
+      <img src="assets/richmenu.jpg?v=1795025593" style="border-radius:10px;margin-top:10px" alt="">
       <div class="tiny muted mt">กดเพื่อตั้งเมนู จองคิว / แต้มสะสม &amp; คิวของฉัน เป็นเมนูหลักของ OA (แทนเมนูเดิม)</div>
       <button class="btn ghost mt" id="richmenu">ติดตั้ง Rich menu</button>
     </div>
@@ -705,7 +705,7 @@ async function settings() {
     if (!confirm('ตั้ง Rich menu นี้เป็นเมนูหลักของ LINE OA?')) return;
     e.target.disabled = true;
     try {
-      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795024090', location.href).href } });
+      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795025593', location.href).href } });
       toast('ติดตั้ง Rich menu แล้ว ✅ เปิดแชท OA เพื่อดู');
     } catch (err) {
       toast(err.message === 'line_token_missing' ? 'ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Cloudflare' : errText(err) + ' ' + (err.data?.detail || ''), 5000);
@@ -941,6 +941,8 @@ async function fbSchedule() {
       <label class="f">ธีมที่ให้ AI หมุนเวียน</label>
       <div class="row" style="gap:6px;flex-wrap:wrap">${themes.map((t) => `<label class="chip-btn"><input type="checkbox" data-theme="${esc(t)}" ${on.has(t) ? 'checked' : ''}> ${esc(t)}</label>`).join('')}</div>
       <label class="f" for="fbtone">โทนภาษาของร้าน</label><textarea class="input" id="fbtone" rows="2">${esc(s.fb_tone)}</textarea>
+      <label class="f" for="fbphone">เบอร์ที่ใส่ในโพสต์ <span class="tiny muted">(ว่าง = ใช้เบอร์ร้าน ${esc(s.shop_phone || '-')})</span></label>
+      <input class="input" id="fbphone" value="${esc(s.fb_phone || '')}" placeholder="เช่น 098-450-4663 (ทราย)" maxlength="60">
       <div class="row" style="gap:10px">
         <div class="grow"><label class="f" for="fbdraft">ร่างล่วงหน้าทุกวันเวลา</label><input class="input" type="time" id="fbdraft" value="${esc(s.fb_draft_time)}"></div>
         <div class="grow"><label class="f" for="fbmodel">โมเดล Gemini</label><input class="input" id="fbmodel" value="${esc(s.fb_model)}"></div>
@@ -959,7 +961,7 @@ async function fbSchedule() {
     const th = [...$fbv().querySelectorAll('[data-theme]:checked')].map((c) => c.dataset.theme);
     if (!th.length) return toast('เลือกธีมอย่างน้อย 1 ธีม');
     try {
-      await api('/api/admin/settings', { method: 'PUT', body: { fb_mode: val($fbv(), '#fbmode'), fb_themes: th.join(','), fb_tone: val($fbv(), '#fbtone'), fb_draft_time: val($fbv(), '#fbdraft') || '07:00', fb_model: val($fbv(), '#fbmodel') || 'gemini-flash-latest' } });
+      await api('/api/admin/settings', { method: 'PUT', body: { fb_mode: val($fbv(), '#fbmode'), fb_themes: th.join(','), fb_tone: val($fbv(), '#fbtone'), fb_phone: val($fbv(), '#fbphone'), fb_draft_time: val($fbv(), '#fbdraft') || '07:00', fb_model: val($fbv(), '#fbmodel') || 'gemini-flash-latest' } });
       toast('บันทึกแล้ว');
     } catch (e) { toast(errText(e)); }
   };
