@@ -315,8 +315,8 @@ export async function runFbCron(env) {
   if (!env.FB_PAGE_TOKEN) return;
   const statuses = settings.fb_mode === 'auto' ? ['approved', 'draft'] : ['approved'];
   const { results } = await env.DB.prepare(
-    `SELECT * FROM fb_posts WHERE date = ? AND time <= ? AND status IN (${statuses.map(() => '?').join(',')}) ORDER BY time`,
-  ).bind(now.date, now.time, ...statuses).all();
+    `SELECT * FROM fb_posts WHERE date = ? AND time <= ? AND time >= ? AND status IN (${statuses.map(() => '?').join(',')}) ORDER BY time`,
+  ).bind(now.date, now.time, fromMinSafe(toMin(now.time) - 180), ...statuses).all(); // เลยเวลาเกิน 3 ชม. ไม่โพสต์ย้อนหลัง
   for (const p of results.map(parsePost)) {
     if (settings.fb_mode === 'auto' && !p.price_ok) {
       await markPost(env, p.id, { status: 'failed', error: 'ราคาในข้อความไม่ตรงกับระบบ — ไม่ได้โพสต์' });
@@ -325,7 +325,7 @@ export async function runFbCron(env) {
     await publishPost(env, p);
   }
   // ร่างที่ไม่ได้อนุมัติ เลยเวลามา 3 ชม. → ข้าม
-  await env.DB.prepare(`UPDATE fb_posts SET status = 'skipped', updated_at = ? WHERE status = 'draft' AND (date < ? OR (date = ? AND time <= ?))`)
+  await env.DB.prepare(`UPDATE fb_posts SET status = 'skipped', updated_at = ? WHERE status IN ('draft','approved') AND (date < ? OR (date = ? AND time < ?))`)
     .bind(nowISO(), now.date, now.date, fromMinSafe(toMin(now.time) - 180)).run();
 }
 const fromMinSafe = (m) => (m < 0 ? '00:00' : String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'));
