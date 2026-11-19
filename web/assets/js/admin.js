@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1795088611';
+} from './core.js?v=1795088709';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -222,6 +222,7 @@ async function styles() {
 
 // ---------------------------------------------------------- ลายน้ำ + ชื่อทรง (รูปสำหรับโพสต์เพจ)
 // รูปต้นฉบับไม่ถูกแก้ · เรนเดอร์สำเนาเก็บไว้ แล้วโพสต์เพจใช้สำเนานี้
+const WM_V = 2; // เวอร์ชันดีไซน์ (เปลี่ยนเมื่อแก้หน้าตา → ทำรูปใหม่ทั้งหมด)
 const wmName = (name) => String(name || '').replace(/[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\uFE0F\u200D]/gu, '').replace(/\s+/g, ' ').trim();
 const wmOf = (id) => {
   for (const s of st.styles || []) if (s.wm?.map?.[id]?.id) return s.wm.map[id].id;
@@ -243,13 +244,30 @@ async function renderWm(origId, name, plain) {
   const x = c.getContext('2d');
   x.drawImage(bmp, 0, 0);
   if (name) {
+    // ป้ายแคปซูลขาวโปร่ง มุมซ้ายล่าง — อ่านออกทั้งรูปพื้นเข้มและพื้นขาว
     x.font = nameFont;
-    x.fillStyle = '#fff';
+    const tw = Math.min(x.measureText(name).width, w - 100 * k);
+    const ph = 54 * k;
+    const pw = 14 * k + 8 * k + 9 * k + tw + 20 * k;
+    const px = 20 * k;
+    const py = h - 20 * k - ph;
+    x.save();
+    x.shadowColor = 'rgba(0,0,0,.14)';
+    x.shadowBlur = 14 * k;
+    x.shadowOffsetY = 4 * k;
+    x.fillStyle = 'rgba(255,255,255,.9)';
+    x.beginPath();
+    x.roundRect(px, py, pw, ph, ph / 2);
+    x.fill();
+    x.restore();
+    x.fillStyle = '#8e5ba8';
+    x.beginPath();
+    x.arc(px + 14 * k + 4 * k, py + ph / 2, 4 * k, 0, Math.PI * 2);
+    x.fill();
+    const m = x.measureText(name);
+    x.fillStyle = '#5b3570';
     x.textBaseline = 'alphabetic';
-    x.shadowColor = 'rgba(0,0,0,.35)'; // ไม่มีแถบเงาด้านล่าง ใช้เงาตัวอักษรให้อ่านออกบนรูปสว่าง
-    x.shadowBlur = 8 * k;
-    x.shadowOffsetY = 1 * k;
-    x.fillText(name, 26 * k, h - 24 * k, w - 52 * k);
+    x.fillText(name, px + 14 * k + 8 * k + 9 * k, py + ph / 2 + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2, tw);
   }
   if (!plain) {
     x.font = wmFont;
@@ -267,13 +285,14 @@ async function renderWm(origId, name, plain) {
 /** ทำรูปลายน้ำของทรงให้ตรงกับชื่อ/รูปปัจจุบัน (เรนเดอร์เฉพาะที่ยังไม่มีหรือเปลี่ยนไป) */
 async function syncWm(s, plain = s.wm?.plain || []) {
   const name = wmName(s.name);
-  const old = s.wm || { name: '', plain: [], map: {} };
+  const old = s.wm || { v: 1, name: '', plain: [], map: {} };
+  const same = old.name === name && Number(old.v) === WM_V;
   const map = {};
-  let changed = old.name !== name || JSON.stringify([...old.plain].sort()) !== JSON.stringify([...plain].sort());
+  let changed = !same || JSON.stringify([...old.plain].sort()) !== JSON.stringify([...plain].sort());
   for (const id of s.gallery || []) {
     const isPlain = plain.includes(id) ? 1 : 0;
     const e = old.map?.[id];
-    if (e && old.name === name && Number(e.plain) === isPlain) {
+    if (e && same && Number(e.plain) === isPlain) {
       map[id] = e;
       continue;
     }
@@ -287,7 +306,7 @@ async function syncWm(s, plain = s.wm?.plain || []) {
   }
   if (Object.keys(old.map || {}).some((k) => !map[k])) changed = true;
   if (!changed) return old;
-  const { wm } = await api(`/api/admin/styles/${s.id}/wm`, { method: 'PUT', body: { name, plain, map } });
+  const { wm } = await api(`/api/admin/styles/${s.id}/wm`, { method: 'PUT', body: { v: WM_V, name, plain, map } });
   s.wm = wm;
   return wm;
 }
@@ -770,7 +789,7 @@ async function settings() {
 
     <div class="card mt2">
       <b>Rich menu ของ LINE OA</b>
-      <img src="assets/richmenu.jpg?v=1795088611" style="border-radius:10px;margin-top:10px" alt="">
+      <img src="assets/richmenu.jpg?v=1795088709" style="border-radius:10px;margin-top:10px" alt="">
       <div class="tiny muted mt">กดเพื่อตั้งเมนู จองคิว / แต้มสะสม &amp; คิวของฉัน เป็นเมนูหลักของ OA (แทนเมนูเดิม)</div>
       <button class="btn ghost mt" id="richmenu">ติดตั้ง Rich menu</button>
     </div>
@@ -812,7 +831,7 @@ async function settings() {
     if (!confirm('ตั้ง Rich menu นี้เป็นเมนูหลักของ LINE OA?')) return;
     e.target.disabled = true;
     try {
-      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795088611', location.href).href } });
+      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795088709', location.href).href } });
       toast('ติดตั้ง Rich menu แล้ว ✅ เปิดแชท OA เพื่อดู');
     } catch (err) {
       toast(err.message === 'line_token_missing' ? 'ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Cloudflare' : errText(err) + ' ' + (err.data?.detail || ''), 5000);

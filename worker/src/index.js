@@ -235,6 +235,7 @@ on('PUT', '/api/admin/styles/:id/wm', 'admin', async ({ env, req, params }) => {
     if (gallery.includes(k) && v && typeof v.id === 'string') map[k] = { id: str(v.id, 64), plain: v.plain ? 1 : 0 };
   }
   const wm = {
+    v: int(b.v, 1),
     name: str(b.name, 80),
     plain: (Array.isArray(b.plain) ? b.plain : []).map((x) => str(x, 64)).filter((x) => gallery.includes(x)),
     map,

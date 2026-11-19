@@ -118,6 +118,7 @@ export function styleGallery(s) {
 export function parseWm(raw) {
   const w = parseJSON(raw, {}) || {};
   return {
+    v: Number(w.v) || 1, // เวอร์ชันดีไซน์ — เปลี่ยนดีไซน์แล้วรูปเก่าจะถูกทำใหม่
     name: typeof w.name === 'string' ? w.name : '',
     plain: Array.isArray(w.plain) ? w.plain.filter((x) => typeof x === 'string') : [],
     map: w.map && typeof w.map === 'object' && !Array.isArray(w.map) ? w.map : {},
