@@ -1,9 +1,9 @@
 import {
   STATUS, addDays, api, baht, bkkTime, dayName, errText, esc, imgUrl, initLiff, loadImage, monthShort,
   profile, readSlipQR, thaiDate, toast, weekday,
-} from './core.js?v=1795088709';
-import { CONFIG } from './config.js?v=1795088709';
-import { promptPayPayload } from './promptpay.js?v=1795088709';
+} from './core.js?v=1795088838';
+import { CONFIG } from './config.js?v=1795088838';
+import { promptPayPayload } from './promptpay.js?v=1795088838';
 
 const $app = document.getElementById('app');
 const $bar = document.getElementById('bar');
@@ -139,7 +139,7 @@ function viewHome() {
   $app.innerHTML = `
     <section class="hero">
       <div class="hero-top">
-        <h1 class="wordmark"><img src="assets/logo-wordmark.png?v=1795088709" alt="${esc(settings.shop_name)}"></h1>
+        <h1 class="wordmark"><img src="assets/logo-wordmark.png?v=1795088838" alt="${esc(settings.shop_name)}"></h1>
         <div class="hero-user">
           <div class="tiny muted">สวัสดีค่ะ</div>
           <div class="small hero-name">${esc(u.display_name || profile?.displayName || '')}</div>
