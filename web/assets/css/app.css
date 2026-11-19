@@ -69,8 +69,8 @@ a { color: var(--rose); }
 
 /* style grid */
 .styles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.style { background: #fff; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column; border: 2px solid transparent; transition: border-color .15s; }
-.style.sel { border-color: var(--rose); }
+.style { background: #fff; border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column; transition: box-shadow .15s; }
+.style.sel { box-shadow: 0 0 0 2px var(--rose), var(--shadow); } /* กรอบเลือก ไม่เว้นขอบขาวรอบรูป */
 .style .ph { aspect-ratio: 1/1; width: 100%; object-fit: cover; background: linear-gradient(135deg, #ecd9f0, #fbefe6); display: grid; place-items: center; font-size: 42px; }
 .style .b { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .style .n { font-weight: 600; font-size: 14px; }
@@ -185,7 +185,7 @@ dialog .df .btn { width: auto; flex: 1; white-space: nowrap; }
 .logo { width: 64px; height: 64px; border-radius: 18px; object-fit: cover; box-shadow: var(--shadow); }
 .brand { font-family: 'Mitr', 'IBM Plex Sans Thai', sans-serif; font-weight: 500; letter-spacing: 0; }
 .hero h1 { font-size: 22px; line-height: 1.25; }
-.style.addon .ph { aspect-ratio: 16/9; font-size: 30px; }
+.style.addon .ph { font-size: 30px; } /* รูปบริการเสริมสี่เหลี่ยมจัตุรัสเท่าทรงหลัก แถวเรียงเสมอกัน */
 .style .p { color: var(--gold); }
 .policy { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
 .policy li { margin: 2px 0; }
