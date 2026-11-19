@@ -11,6 +11,7 @@ const js = (col) => `json_each(CASE WHEN json_valid(${col}) THEN ${col} ELSE '[]
 export const USED_IMAGE_QUERIES = [
   'SELECT image_id AS id FROM styles',
   `SELECT j.value AS id FROM styles, ${js('styles.gallery')} j`,
+  `SELECT json_extract(j.value, '$.id') AS id FROM styles, json_each(CASE WHEN json_valid(styles.gallery_wm) THEN styles.gallery_wm ELSE '{}' END, '$.map') j`,
   'SELECT image_id AS id FROM review_photos',
   `SELECT json_extract(j.value, '$.image_id') AS id FROM bookings, ${js('bookings.items')} j`,
   'SELECT slip_image_id AS id FROM bookings',

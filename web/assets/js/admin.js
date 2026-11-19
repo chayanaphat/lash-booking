@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1795027138';
+} from './core.js?v=1795088611';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -217,23 +217,112 @@ async function styles() {
       </div>`).join('') || '<div class="empty">ยังไม่มีทรง</div>'}</div>`;
   $view().querySelector('#add').onclick = () => styleForm({ name: '', description: '', price: '', duration_min: 120, sort: st.styles.length + 1, active: 1, category: st.styles[0]?.category || 'ต่อขนตา (เลือกทรง)', kind: 'main', stamps: 0, redeemable: 0 });
   $view().querySelectorAll('[data-edit]').forEach((b) => (b.onclick = () => styleForm(st.styles.find((s) => s.id === Number(b.dataset.edit)))));
+  backfillWm();
+}
+
+// ---------------------------------------------------------- ลายน้ำ + ชื่อทรง (รูปสำหรับโพสต์เพจ)
+// รูปต้นฉบับไม่ถูกแก้ · เรนเดอร์สำเนาเก็บไว้ แล้วโพสต์เพจใช้สำเนานี้
+const wmName = (name) => String(name || '').replace(/[\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\uFE0F\u200D]/gu, '').replace(/\s+/g, ' ').trim();
+const wmOf = (id) => {
+  for (const s of st.styles || []) if (s.wm?.map?.[id]?.id) return s.wm.map[id].id;
+  return id;
+};
+
+async function renderWm(origId, name, plain) {
+  const blob = await (await fetch(imgUrl(origId))).blob();
+  const bmp = await createImageBitmap(blob);
+  const w = bmp.width;
+  const h = bmp.height;
+  const k = Math.min(w, h) / 540; // ออกแบบไว้ที่รูปกว้าง 540
+  const nameFont = `500 ${Math.round(32 * k)}px "Playfair Display", Mitr, sans-serif`;
+  const wmFont = `${Math.round(40 * k)}px "Great Vibes", cursive`;
+  await Promise.all([document.fonts.load(nameFont, name), plain ? null : document.fonts.load(wmFont, 'Kingyo eyelash')]);
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const x = c.getContext('2d');
+  x.drawImage(bmp, 0, 0);
+  if (name) {
+    x.font = nameFont;
+    x.fillStyle = '#fff';
+    x.textBaseline = 'alphabetic';
+    x.shadowColor = 'rgba(0,0,0,.35)'; // ไม่มีแถบเงาด้านล่าง ใช้เงาตัวอักษรให้อ่านออกบนรูปสว่าง
+    x.shadowBlur = 8 * k;
+    x.shadowOffsetY = 1 * k;
+    x.fillText(name, 26 * k, h - 24 * k, w - 52 * k);
+  }
+  if (!plain) {
+    x.font = wmFont;
+    x.textAlign = 'right';
+    x.textBaseline = 'top';
+    x.fillStyle = 'rgba(255,255,255,.88)';
+    x.shadowColor = 'rgba(0,0,0,.18)';
+    x.shadowBlur = 6 * k;
+    x.shadowOffsetY = 1 * k;
+    x.fillText('Kingyo eyelash', w - 18 * k, 10 * k);
+  }
+  return c.toDataURL('image/jpeg', 0.88);
+}
+
+/** ทำรูปลายน้ำของทรงให้ตรงกับชื่อ/รูปปัจจุบัน (เรนเดอร์เฉพาะที่ยังไม่มีหรือเปลี่ยนไป) */
+async function syncWm(s, plain = s.wm?.plain || []) {
+  const name = wmName(s.name);
+  const old = s.wm || { name: '', plain: [], map: {} };
+  const map = {};
+  let changed = old.name !== name || JSON.stringify([...old.plain].sort()) !== JSON.stringify([...plain].sort());
+  for (const id of s.gallery || []) {
+    const isPlain = plain.includes(id) ? 1 : 0;
+    const e = old.map?.[id];
+    if (e && old.name === name && Number(e.plain) === isPlain) {
+      map[id] = e;
+      continue;
+    }
+    try {
+      const image = await renderWm(id, name, isPlain);
+      map[id] = { id: (await api('/api/admin/images', { method: 'POST', body: { image } })).id, plain: isPlain };
+      changed = true;
+    } catch (e) {
+      console.warn('wm', id, e); // รูปนี้โพสต์แบบไม่มีลายน้ำไปก่อน รอบหน้าจะลองใหม่
+    }
+  }
+  if (Object.keys(old.map || {}).some((k) => !map[k])) changed = true;
+  if (!changed) return old;
+  const { wm } = await api(`/api/admin/styles/${s.id}/wm`, { method: 'PUT', body: { name, plain, map } });
+  s.wm = wm;
+  return wm;
+}
+
+let wmBusy = false;
+/** ทรงที่ยังไม่มีรูปลายน้ำ (เช่นทรงเก่าก่อนมีฟีเจอร์นี้) ทำให้เบื้องหลังตอนเปิดหน้าแอดมิน */
+async function backfillWm() {
+  if (wmBusy) return;
+  wmBusy = true;
+  try {
+    for (const s of st.styles.filter((x) => x.gallery?.length)) {
+      try { await syncWm(s); } catch (e) { console.warn('wm', s.id, e); }
+    }
+  } finally {
+    wmBusy = false;
+  }
 }
 
 function styleForm(s) {
   const MAX_IMG = 5;
   let imageId = s.image_id || null;
   let gallery = [...(s.gallery || (imageId ? [imageId] : []))];
+  let plain = [...(s.wm?.plain || [])]; // รูปที่มีลายน้ำร้านอยู่แล้ว → ใส่แค่ชื่อทรง
   const galHtml = () => gallery.map((id) => `
       <div class="gal-item ${id === imageId ? 'cover' : ''}">
         <button type="button" class="gal-img" data-cover="${esc(id)}" aria-label="ตั้งเป็นรูปหลัก"><img src="${imgUrl(id)}" alt=""></button>
         ${id === imageId ? '<span class="gal-badge">⭐ รูปหลัก</span>' : ''}
         <button type="button" class="gal-x" data-rm="${esc(id)}" aria-label="ลบรูป">✕</button>
+        <button type="button" class="gal-wm ${plain.includes(id) ? 'off' : ''}" data-wm="${esc(id)}">${plain.includes(id) ? 'มีลายน้ำแล้ว' : '💧 ใส่ลายน้ำ'}</button>
       </div>`).join('') + (gallery.length < MAX_IMG ? '<button type="button" class="gal-add" id="pick">+ เพิ่มรูป</button>' : '');
   const d = dialog(s.id ? 'แก้ไขทรง' : 'เพิ่มทรง', `
     <label class="f">รูปผลงาน <span class="tiny muted">(สูงสุด ${MAX_IMG} รูป · แตะรูปเพื่อตั้งเป็นรูปหลักที่โชว์ในหน้าจอง)</span></label>
     <input type="file" accept="image/*" multiple id="file" class="hidden">
     <div class="gal" id="gal">${galHtml()}</div>
-    <div class="tiny muted mt">โพสต์เพจอัตโนมัติจะวนใช้ทุกรูปในนี้ · ระบบย่อรูปให้อัตโนมัติ</div>
+    <div class="tiny muted mt">โพสต์เพจจะวนใช้ทุกรูปในนี้ โดยใส่ลายน้ำ "Kingyo eyelash" + ชื่อทรงให้อัตโนมัติ (รูปในหน้าจองไม่มีลายน้ำ) · รูปไหนมีลายน้ำอยู่แล้ว แตะ "💧 ใส่ลายน้ำ" ให้เป็น "มีลายน้ำแล้ว"</div>
     <label class="f">ชื่อทรง / บริการ</label><input class="input" id="name" value="${esc(s.name)}" maxlength="80">
     <div class="grid2">
       <div><label class="f">หมวด (หัวข้อในหน้าจอง)</label><input class="input" id="cat" list="cats" value="${esc(s.category || '')}" maxlength="60">
@@ -253,10 +342,15 @@ function styleForm(s) {
     </div>`, {
     extraFoot: s.id ? '<button class="btn bad" id="del" style="flex:1">ลบ</button>' : '',
     onSave: async (d) => {
-      await api(`/api/admin/styles${s.id ? '/' + s.id : ''}`, {
+      const r = await api(`/api/admin/styles${s.id ? '/' + s.id : ''}`, {
         method: s.id ? 'PUT' : 'POST',
         body: { name: val(d, '#name'), description: val(d, '#desc'), price: val(d, '#price'), duration_min: val(d, '#dur'), sort: val(d, '#sort'), active: val(d, '#active') === '1', image_id: imageId, gallery, category: val(d, '#cat'), kind: val(d, '#kind'), stamps: val(d, '#stamps'), redeemable: val(d, '#redeem') },
       });
+      const saved = { id: s.id || r.id, name: val(d, '#name'), gallery: imageId ? [imageId, ...gallery.filter((x) => x !== imageId)] : gallery, wm: s.wm };
+      if (saved.gallery.length) {
+        toast('บันทึกแล้ว · กำลังใส่ลายน้ำในรูปโพสต์…');
+        try { await syncWm(saved, plain.filter((x) => gallery.includes(x))); } catch (e) { toast('ใส่ลายน้ำไม่สำเร็จ ระบบจะลองใหม่ตอนเปิดหน้านี้'); }
+      }
       toast('บันทึกแล้ว');
       show();
     },
@@ -266,6 +360,11 @@ function styleForm(s) {
     d.querySelector('#gal').innerHTML = galHtml();
     d.querySelector('#pick')?.addEventListener('click', () => file.click());
     d.querySelectorAll('[data-cover]').forEach((b) => (b.onclick = () => ((imageId = b.dataset.cover), renderGal())));
+    d.querySelectorAll('[data-wm]').forEach((b) => (b.onclick = () => {
+      const id = b.dataset.wm;
+      plain = plain.includes(id) ? plain.filter((x) => x !== id) : [...plain, id];
+      renderGal();
+    }));
     d.querySelectorAll('[data-rm]').forEach((b) => (b.onclick = () => {
       gallery = gallery.filter((x) => x !== b.dataset.rm);
       if (imageId === b.dataset.rm) imageId = gallery[0] || null;
@@ -671,7 +770,7 @@ async function settings() {
 
     <div class="card mt2">
       <b>Rich menu ของ LINE OA</b>
-      <img src="assets/richmenu.jpg?v=1795027138" style="border-radius:10px;margin-top:10px" alt="">
+      <img src="assets/richmenu.jpg?v=1795088611" style="border-radius:10px;margin-top:10px" alt="">
       <div class="tiny muted mt">กดเพื่อตั้งเมนู จองคิว / แต้มสะสม &amp; คิวของฉัน เป็นเมนูหลักของ OA (แทนเมนูเดิม)</div>
       <button class="btn ghost mt" id="richmenu">ติดตั้ง Rich menu</button>
     </div>
@@ -713,7 +812,7 @@ async function settings() {
     if (!confirm('ตั้ง Rich menu นี้เป็นเมนูหลักของ LINE OA?')) return;
     e.target.disabled = true;
     try {
-      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795027138', location.href).href } });
+      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795088611', location.href).href } });
       toast('ติดตั้ง Rich menu แล้ว ✅ เปิดแชท OA เพื่อดู');
     } catch (err) {
       toast(err.message === 'line_token_missing' ? 'ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Cloudflare' : errText(err) + ' ' + (err.data?.detail || ''), 5000);
@@ -757,10 +856,11 @@ const FB_STATUS = {
 const FB_SRC = { ai: 'ร่างโดย Gemini', fallback: 'คอนเทนต์สำรอง', empty: 'ยังไม่มีข้อความ' };
 const DAY_SHORT = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.'];
 const fbPill = (s) => `<span class="fb-pill ${FB_STATUS[s]?.[1] || ''}">${FB_STATUS[s]?.[0] || s}</span>`;
-const fbThumbs = (ids, cls = 'fb-th') => `<div class="fb-thumbs">${ids.map((id) => `<img class="${cls}" src="${imgUrl(id)}" alt="">`).join('')}</div>`;
+const fbThumbs = (ids, cls = 'fb-th') => `<div class="fb-thumbs">${ids.map((id) => `<img class="${cls}" src="${imgUrl(wmOf(id))}" alt="">`).join('')}</div>`;
 
 async function fbpost() {
   st.fbsub ||= 'drafts';
+  backfillWm();
   const data = await api('/api/admin/fb');
   st.fb = data;
   const sub = (k, l) => `<button class="tab ${st.fbsub === k ? 'on' : ''}" data-fbsub="${k}">${l}</button>`;
@@ -855,7 +955,8 @@ async function fbPublish(id, btn) {
 
 async function fbImagePool() {
   const [{ styles: list }, { albums }] = await Promise.all([api('/api/admin/styles'), api('/api/admin/reviews')]);
-  const ids = [...list.filter((s) => s.image_id).map((s) => s.image_id), ...albums.flatMap((a) => a.photos.map((p) => p.image_id))];
+  st.styles = list;
+  const ids = [...list.flatMap((s) => s.gallery || []), ...albums.flatMap((a) => a.photos.map((p) => p.image_id))];
   return [...new Set(ids)];
 }
 
@@ -865,7 +966,7 @@ async function fbEdit(p) {
   const chips = ['สั้นลง', 'เป็นกันเองขึ้น', 'เน้นโปร', 'เพิ่ม hashtag', 'ชวนจองคิวให้ชัดขึ้น'];
   const pickHtml = () => [...new Set([...picked, ...pool])].map((id) => {
     const n = picked.indexOf(id) + 1;
-    return `<button type="button" class="fb-pick ${n ? 'on' : ''}" data-img="${esc(id)}"><img src="${imgUrl(id)}" alt="">${n ? `<span>${n}</span>` : ''}</button>`;
+    return `<button type="button" class="fb-pick ${n ? 'on' : ''}" data-img="${esc(id)}"><img src="${imgUrl(wmOf(id))}" alt="">${n ? `<span>${n}</span>` : ''}</button>`;
   }).join('');
   const d = dialog(`แก้โพสต์ ${esc(p.time)} · ${esc(p.theme)}`, `
     <label class="f" for="fbt">ข้อความ</label>
@@ -984,7 +1085,7 @@ function fbSchedForm(x) {
 async function fbHistory() {
   const { posts } = await api('/api/admin/fb/history');
   $fbv().innerHTML = posts.map((p) => `<div class="card row fb-hist">
-    ${p.image_ids[0] ? `<img class="fb-th" src="${imgUrl(p.image_ids[0])}" alt="">` : '<div class="fb-th"></div>'}
+    ${p.image_ids[0] ? `<img class="fb-th" src="${imgUrl(wmOf(p.image_ids[0]))}" alt="">` : '<div class="fb-th"></div>'}
     <div class="grow" style="min-width:0">
       <div class="row" style="gap:6px"><b class="small">${esc(thaiDate(p.date))} · ${esc(p.time)}</b><span class="tag">${esc(p.theme)}</span><span class="grow"></span>${fbPill(p.status)}</div>
       <div class="tiny muted fb-one">${esc(p.text)}</div>

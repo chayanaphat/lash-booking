@@ -290,6 +290,13 @@ export async function ensureDrafts(env, date) {
   return made;
 }
 
+/** รูปต้นฉบับ → รูปที่ใส่ลายน้ำ+ชื่อทรงแล้ว (ถ้ามี) */
+export function wmLookup(styles) {
+  const m = {};
+  for (const s of styles) for (const [orig, v] of Object.entries(s.wm?.map || {})) if (v?.id) m[orig] = v.id;
+  return (id) => m[id] || id;
+}
+
 export function imageUrl(env, id) {
   return `${(env.PUBLIC_API_URL || '').replace(/\/$/, '')}/img/${id}.jpg`;
 }
@@ -312,9 +319,10 @@ export async function pageInfo(env) {
 /** โพสต์ลงเพจ: รูป (ถ้ามี) อัปโหลดแบบยังไม่เผยแพร่ แล้วแนบในโพสต์เดียว */
 export async function publishToPage(env, post) {
   const page = await pageInfo(env);
+  const wm = wmLookup(await getStyles(env));
   const media = [];
   for (const id of post.image_ids.slice(0, 4)) {
-    const r = await graph(env, `${page.id}/photos`, { url: imageUrl(env, id), published: 'false' });
+    const r = await graph(env, `${page.id}/photos`, { url: imageUrl(env, wm(id)), published: 'false' });
     media.push(r.id);
   }
   const params = { message: post.text };

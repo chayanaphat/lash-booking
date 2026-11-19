@@ -163,3 +163,12 @@ test('fb: phone emoji rotates 🤙🏻 → 📞 → 📱', () => {
   assert.equal(nextPhoneEmoji(['ไม่มีเบอร์', '📞 098']), '📱');
   assert.equal(nextPhoneEmoji(['📱 098']), '🤙🏻');
 });
+
+import { wmLookup } from '../src/fbpost.js';
+import { parseWm } from '../src/db.js';
+test('fb: posts use the watermarked copy when one exists', () => {
+  const look = wmLookup([{ wm: parseWm('{"name":"YY","map":{"a":{"id":"a2","plain":0}}}') }, { wm: parseWm('oops') }]);
+  assert.equal(look('a'), 'a2');
+  assert.equal(look('b'), 'b');
+  assert.deepEqual(parseWm(''), { name: '', plain: [], map: {} });
+});

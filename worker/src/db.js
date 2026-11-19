@@ -99,6 +99,13 @@ export async function ensureStyleStamps(env) {
   } catch (e) {
     if (!/duplicate column/i.test(String(e?.message || e))) throw e;
   }
+  // styles.gallery_wm = รูปสำหรับโพสต์เพจ (ใส่ลายน้ำ + ชื่อทรง ทำในเบราว์เซอร์แอดมิน)
+  // {"name": ชื่อที่ใส่ในรูป, "plain": [รูปที่มีลายน้ำอยู่แล้ว], "map": {รูปต้นฉบับ: {"id": รูปที่ใส่แล้ว, "plain": 0|1}}}
+  try {
+    await env.DB.prepare("ALTER TABLE styles ADD COLUMN gallery_wm TEXT NOT NULL DEFAULT '{}'").run();
+  } catch (e) {
+    if (!/duplicate column/i.test(String(e?.message || e))) throw e;
+  }
   stylesStampsReady = true;
 }
 /** รูปทั้งหมดของทรง โดยรูปหลักอยู่หน้าสุด */
@@ -108,11 +115,19 @@ export function styleGallery(s) {
   if (s.image_id && !list.includes(s.image_id)) list.unshift(s.image_id);
   return s.image_id ? [s.image_id, ...list.filter((x) => x !== s.image_id)] : list;
 }
+export function parseWm(raw) {
+  const w = parseJSON(raw, {}) || {};
+  return {
+    name: typeof w.name === 'string' ? w.name : '',
+    plain: Array.isArray(w.plain) ? w.plain.filter((x) => typeof x === 'string') : [],
+    map: w.map && typeof w.map === 'object' && !Array.isArray(w.map) ? w.map : {},
+  };
+}
 export async function getStyles(env, { activeOnly = false } = {}) {
   await ensureStyleStamps(env);
   const sql = `SELECT * FROM styles ${activeOnly ? 'WHERE active = 1' : ''} ORDER BY sort, id`;
   const { results } = await env.DB.prepare(sql).all();
-  return results.map((r) => ({ ...r, gallery: styleGallery(r) }));
+  return results.map(({ gallery_wm, ...r }) => ({ ...r, gallery: styleGallery(r), wm: parseWm(gallery_wm) }));
 }
 export const styleMap = (list) => Object.fromEntries(list.map((s) => [s.id, s]));
 

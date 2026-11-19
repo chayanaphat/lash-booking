@@ -1,7 +1,7 @@
 // Lash booking API — Cloudflare Worker
 import {
   PUBLIC_SETTING_KEYS, adminIds, envAdminIds, ensureBlocks, ensureReviews, ensureStyleStamps, getBlocks, getReviewAlbums, notifyAdminIds, getBookingByCode, getHolidays, getHours, getImage, getPromotions,
-  getSettings, getStyles, isAdmin, parseBooking, parsePromo, saveImage, saveSettings, upsertUser,
+  getSettings, getStyles, isAdmin, parseBooking, parsePromo, saveImage, saveSettings, styleGallery, upsertUser,
 } from './db.js';
 import { buildQuote, cancelOwn, changeStatus, createBooking, expirePending, processSlip, sendReminders, slotsFor } from './bookings.js';
 import { userFromRequest } from './line.js';
@@ -222,6 +222,25 @@ on('PUT', '/api/admin/styles/:id', 'admin', async ({ env, req, params }) => {
   await env.DB.prepare('UPDATE styles SET name=?, description=?, price=?, duration_min=?, image_id=?, sort=?, active=?, category=?, kind=?, stamps=?, redeemable=?, gallery=? WHERE id=?')
     .bind(s.name, s.description, s.price, s.duration_min, s.image_id, s.sort, s.active, s.category, s.kind, s.stamps, s.redeemable, s.gallery, int(params.id)).run();
   return json({ ok: true });
+});
+// รูปสำหรับโพสต์เพจของทรง (แอดมินเรนเดอร์ลายน้ำ+ชื่อทรงในเบราว์เซอร์ แล้วส่งแผนที่รูปมาเก็บ)
+on('PUT', '/api/admin/styles/:id/wm', 'admin', async ({ env, req, params }) => {
+  const b = await readJson(req);
+  await ensureStyleStamps(env);
+  const row = await env.DB.prepare('SELECT gallery, image_id FROM styles WHERE id = ?').bind(int(params.id)).first();
+  if (!row) throw new HttpError(404, 'not_found');
+  const gallery = styleGallery(row);
+  const map = {};
+  for (const [k, v] of Object.entries(b.map && typeof b.map === 'object' ? b.map : {})) {
+    if (gallery.includes(k) && v && typeof v.id === 'string') map[k] = { id: str(v.id, 64), plain: v.plain ? 1 : 0 };
+  }
+  const wm = {
+    name: str(b.name, 80),
+    plain: (Array.isArray(b.plain) ? b.plain : []).map((x) => str(x, 64)).filter((x) => gallery.includes(x)),
+    map,
+  };
+  await env.DB.prepare('UPDATE styles SET gallery_wm = ? WHERE id = ?').bind(JSON.stringify(wm), int(params.id)).run();
+  return json({ ok: true, wm });
 });
 on('DELETE', '/api/admin/styles/:id', 'admin', async ({ env, params }) => {
   await env.DB.prepare('DELETE FROM styles WHERE id = ?').bind(int(params.id)).run();
