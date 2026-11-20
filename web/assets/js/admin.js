@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1795090205';
+} from './core.js?v=1795143926';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -331,13 +331,13 @@ function styleForm(s) {
         <button type="button" class="gal-img" data-cover="${esc(id)}" aria-label="ตั้งเป็นรูปหลัก"><img src="${imgUrl(id)}" alt=""></button>
         ${id === imageId ? '<span class="gal-badge">⭐ รูปหลัก</span>' : ''}
         <button type="button" class="gal-x" data-rm="${esc(id)}" aria-label="ลบรูป">✕</button>
-        <button type="button" class="gal-wm ${plain.includes(id) ? 'off' : ''}" data-wm="${esc(id)}">${plain.includes(id) ? 'มีลายน้ำแล้ว' : '💧 ใส่ลายน้ำ'}</button>
+        <button type="button" class="gal-wm ${plain.includes(id) ? 'off' : ''}" data-wm="${esc(id)}" aria-pressed="${plain.includes(id)}">${plain.includes(id) ? '☑' : '☐'} มีลายน้ำในรูปแล้ว</button>
       </div>`).join('') + (gallery.length < MAX_IMG ? '<button type="button" class="gal-add" id="pick">+ เพิ่มรูป</button>' : '');
   const d = dialog(s.id ? 'แก้ไขทรง' : 'เพิ่มทรง', `
     <label class="f">รูปผลงาน <span class="tiny muted">(สูงสุด ${MAX_IMG} รูป · แตะรูปเพื่อตั้งเป็นรูปหลักที่โชว์ในหน้าจอง)</span></label>
     <input type="file" accept="image/*" multiple id="file" class="hidden">
     <div class="gal" id="gal">${galHtml()}</div>
-    <div class="tiny muted mt">โพสต์เพจจะวนใช้ทุกรูปในนี้ โดยใส่ลายน้ำ "Kingyo eyelash" + ชื่อทรงให้อัตโนมัติ (รูปในหน้าจองไม่มีลายน้ำ) · รูปไหนมีลายน้ำอยู่แล้ว แตะ "💧 ใส่ลายน้ำ" ให้เป็น "มีลายน้ำแล้ว"</div>
+    <div class="tiny muted mt">โพสต์เพจจะวนใช้ทุกรูปในนี้ โดยใส่ลายน้ำ "Kingyo eyelash" + ชื่อทรงให้อัตโนมัติ (รูปในหน้าจองไม่มีลายน้ำ) · ติ๊ก "มีลายน้ำในรูปแล้ว" เฉพาะรูปที่ถ่ายมามีลายน้ำร้านอยู่แล้ว (ระบบจะไม่ใส่ซ้ำ) — รูปทั่วไปไม่ต้องติ๊ก"</div>
     <label class="f">ชื่อทรง / บริการ</label><input class="input" id="name" value="${esc(s.name)}" maxlength="80">
     <div class="grid2">
       <div><label class="f">หมวด (หัวข้อในหน้าจอง)</label><input class="input" id="cat" list="cats" value="${esc(s.category || '')}" maxlength="60">
@@ -785,7 +785,7 @@ async function settings() {
 
     <div class="card mt2">
       <b>Rich menu ของ LINE OA</b>
-      <img src="assets/richmenu.jpg?v=1795090205" style="border-radius:10px;margin-top:10px" alt="">
+      <img src="assets/richmenu.jpg?v=1795143926" style="border-radius:10px;margin-top:10px" alt="">
       <div class="tiny muted mt">กดเพื่อตั้งเมนู จองคิว / แต้มสะสม &amp; คิวของฉัน เป็นเมนูหลักของ OA (แทนเมนูเดิม)</div>
       <button class="btn ghost mt" id="richmenu">ติดตั้ง Rich menu</button>
     </div>
@@ -827,7 +827,7 @@ async function settings() {
     if (!confirm('ตั้ง Rich menu นี้เป็นเมนูหลักของ LINE OA?')) return;
     e.target.disabled = true;
     try {
-      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795090205', location.href).href } });
+      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795143926', location.href).href } });
       toast('ติดตั้ง Rich menu แล้ว ✅ เปิดแชท OA เพื่อดู');
     } catch (err) {
       toast(err.message === 'line_token_missing' ? 'ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Cloudflare' : errText(err) + ' ' + (err.data?.detail || ''), 5000);
