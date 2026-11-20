@@ -100,11 +100,16 @@ export async function ensureStyleStamps(env) {
     if (!/duplicate column/i.test(String(e?.message || e))) throw e;
   }
   // styles.gallery_wm = รูปสำหรับโพสต์เพจ (ใส่ลายน้ำ + ชื่อทรง ทำในเบราว์เซอร์แอดมิน)
-  // {"name": ชื่อที่ใส่ในรูป, "plain": [รูปที่มีลายน้ำอยู่แล้ว], "map": {รูปต้นฉบับ: {"id": รูปที่ใส่แล้ว, "plain": 0|1}}}
+  // {"v": เวอร์ชันดีไซน์, "name": ชื่อที่ใส่ในรูป, "map": {รูปต้นฉบับ: {"id": รูปที่ใส่ลายน้ำ+ชื่อแล้ว}}}
   try {
     await env.DB.prepare("ALTER TABLE styles ADD COLUMN gallery_wm TEXT NOT NULL DEFAULT '{}'").run();
   } catch (e) {
     if (!/duplicate column/i.test(String(e?.message || e))) throw e;
+  }
+  // ลบ flag "plain" (มีลายน้ำแล้ว) ที่เลิกใช้ ออกจากข้อมูลเดิม
+  const { results: oldWm } = await env.DB.prepare(`SELECT id, gallery_wm FROM styles WHERE gallery_wm LIKE '%"plain"%'`).all();
+  for (const r of oldWm) {
+    await env.DB.prepare('UPDATE styles SET gallery_wm = ? WHERE id = ?').bind(JSON.stringify(parseWm(r.gallery_wm)), r.id).run();
   }
   stylesStampsReady = true;
 }
@@ -120,8 +125,11 @@ export function parseWm(raw) {
   return {
     v: Number(w.v) || 1, // เวอร์ชันดีไซน์ — เปลี่ยนดีไซน์แล้วรูปเก่าจะถูกทำใหม่
     name: typeof w.name === 'string' ? w.name : '',
-    plain: Array.isArray(w.plain) ? w.plain.filter((x) => typeof x === 'string') : [],
-    map: w.map && typeof w.map === 'object' && !Array.isArray(w.map) ? w.map : {},
+    map: Object.fromEntries(
+      Object.entries(w.map && typeof w.map === 'object' && !Array.isArray(w.map) ? w.map : {})
+        .filter(([, e]) => typeof e?.id === 'string')
+        .map(([k, e]) => [k, { id: e.id }]),
+    ),
   };
 }
 export async function getStyles(env, { activeOnly = false } = {}) {

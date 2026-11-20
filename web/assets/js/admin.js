@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1795144130';
+} from './core.js?v=1795144360';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -229,7 +229,7 @@ const wmOf = (id) => {
   return id;
 };
 
-async function renderWm(origId, name, plain) {
+async function renderWm(origId, name) {
   const blob = await (await fetch(imgUrl(origId))).blob();
   const bmp = await createImageBitmap(blob);
   const w = bmp.width;
@@ -237,7 +237,7 @@ async function renderWm(origId, name, plain) {
   const k = Math.min(w, h) / 540; // ออกแบบไว้ที่รูปกว้าง 540
   const nameFont = `500 ${Math.round(32 * k)}px "Playfair Display", Mitr, sans-serif`;
   const wmFont = `${Math.round(40 * k)}px "Great Vibes", cursive`;
-  await Promise.all([document.fonts.load(nameFont, name), plain ? null : document.fonts.load(wmFont, 'Kingyo eyelash')]);
+  await Promise.all([document.fonts.load(nameFont, name), document.fonts.load(wmFont, 'Kingyo eyelash')]);
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
@@ -265,7 +265,7 @@ async function renderWm(origId, name, plain) {
     x.textBaseline = 'alphabetic';
     x.fillText(name, px + 20 * k, py + ph / 2 + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2, tw);
   }
-  if (!plain) {
+  {
     x.font = wmFont;
     x.textAlign = 'right';
     x.textBaseline = 'top';
@@ -280,22 +280,20 @@ async function renderWm(origId, name, plain) {
 
 /** ทำรูปลายน้ำของทรงให้ตรงกับชื่อ/รูปปัจจุบัน (เรนเดอร์เฉพาะที่ยังไม่มีหรือเปลี่ยนไป) */
 async function syncWm(s) {
-  const plain = []; // ทุกรูปใส่ทั้งลายน้ำและชื่อทรงเสมอ
   const name = wmName(s.name);
-  const old = s.wm || { v: 1, name: '', plain: [], map: {} };
+  const old = s.wm || { v: 1, name: '', map: {} };
   const same = old.name === name && Number(old.v) === WM_V;
   const map = {};
-  let changed = !same || JSON.stringify([...old.plain].sort()) !== JSON.stringify([...plain].sort());
+  let changed = !same;
   for (const id of s.gallery || []) {
-    const isPlain = plain.includes(id) ? 1 : 0;
     const e = old.map?.[id];
-    if (e && same && Number(e.plain) === isPlain) {
+    if (e && same) {
       map[id] = e;
       continue;
     }
     try {
-      const image = await renderWm(id, name, isPlain);
-      map[id] = { id: (await api('/api/admin/images', { method: 'POST', body: { image } })).id, plain: isPlain };
+      const image = await renderWm(id, name);
+      map[id] = { id: (await api('/api/admin/images', { method: 'POST', body: { image } })).id };
       changed = true;
     } catch (e) {
       console.warn('wm', id, e); // รูปนี้โพสต์แบบไม่มีลายน้ำไปก่อน รอบหน้าจะลองใหม่
@@ -303,7 +301,7 @@ async function syncWm(s) {
   }
   if (Object.keys(old.map || {}).some((k) => !map[k])) changed = true;
   if (!changed) return old;
-  const { wm } = await api(`/api/admin/styles/${s.id}/wm`, { method: 'PUT', body: { v: WM_V, name, plain, map } });
+  const { wm } = await api(`/api/admin/styles/${s.id}/wm`, { method: 'PUT', body: { v: WM_V, name, map } });
   s.wm = wm;
   return wm;
 }
@@ -779,7 +777,7 @@ async function settings() {
 
     <div class="card mt2">
       <b>Rich menu ของ LINE OA</b>
-      <img src="assets/richmenu.jpg?v=1795144130" style="border-radius:10px;margin-top:10px" alt="">
+      <img src="assets/richmenu.jpg?v=1795144360" style="border-radius:10px;margin-top:10px" alt="">
       <div class="tiny muted mt">กดเพื่อตั้งเมนู จองคิว / แต้มสะสม &amp; คิวของฉัน เป็นเมนูหลักของ OA (แทนเมนูเดิม)</div>
       <button class="btn ghost mt" id="richmenu">ติดตั้ง Rich menu</button>
     </div>
@@ -821,7 +819,7 @@ async function settings() {
     if (!confirm('ตั้ง Rich menu นี้เป็นเมนูหลักของ LINE OA?')) return;
     e.target.disabled = true;
     try {
-      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795144130', location.href).href } });
+      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795144360', location.href).href } });
       toast('ติดตั้ง Rich menu แล้ว ✅ เปิดแชท OA เพื่อดู');
     } catch (err) {
       toast(err.message === 'line_token_missing' ? 'ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Cloudflare' : errText(err) + ' ' + (err.data?.detail || ''), 5000);

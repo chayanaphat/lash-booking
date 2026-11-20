@@ -232,12 +232,11 @@ on('PUT', '/api/admin/styles/:id/wm', 'admin', async ({ env, req, params }) => {
   const gallery = styleGallery(row);
   const map = {};
   for (const [k, v] of Object.entries(b.map && typeof b.map === 'object' ? b.map : {})) {
-    if (gallery.includes(k) && v && typeof v.id === 'string') map[k] = { id: str(v.id, 64), plain: v.plain ? 1 : 0 };
+    if (gallery.includes(k) && v && typeof v.id === 'string') map[k] = { id: str(v.id, 64) };
   }
   const wm = {
     v: int(b.v, 1),
     name: str(b.name, 80),
-    plain: (Array.isArray(b.plain) ? b.plain : []).map((x) => str(x, 64)).filter((x) => gallery.includes(x)),
     map,
   };
   await env.DB.prepare('UPDATE styles SET gallery_wm = ? WHERE id = ?').bind(JSON.stringify(wm), int(params.id)).run();
