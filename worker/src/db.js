@@ -100,7 +100,7 @@ export async function ensureStyleStamps(env) {
     if (!/duplicate column/i.test(String(e?.message || e))) throw e;
   }
   // styles.gallery_wm = รูปสำหรับโพสต์เพจ (ใส่ลายน้ำ + ชื่อทรง ทำในเบราว์เซอร์แอดมิน)
-  // {"v": เวอร์ชันดีไซน์, "name": ชื่อที่ใส่ในรูป, "map": {รูปต้นฉบับ: {"id": รูปที่ใส่ลายน้ำ+ชื่อแล้ว}}}
+  // {"v": เวอร์ชันดีไซน์, "mark": ลายน้ำ (ชื่อร้าน), "name": ชื่อทรงที่ใส่ในรูป, "map": {รูปต้นฉบับ: {"id": รูปที่ใส่ลายน้ำ+ชื่อแล้ว}}}
   try {
     await env.DB.prepare("ALTER TABLE styles ADD COLUMN gallery_wm TEXT NOT NULL DEFAULT '{}'").run();
   } catch (e) {
@@ -124,6 +124,7 @@ export function parseWm(raw) {
   const w = parseJSON(raw, {}) || {};
   return {
     v: Number(w.v) || 1, // เวอร์ชันดีไซน์ — เปลี่ยนดีไซน์แล้วรูปเก่าจะถูกทำใหม่
+    mark: typeof w.mark === 'string' ? w.mark : '',
     name: typeof w.name === 'string' ? w.name : '',
     map: Object.fromEntries(
       Object.entries(w.map && typeof w.map === 'object' && !Array.isArray(w.map) ? w.map : {})

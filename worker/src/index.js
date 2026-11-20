@@ -236,6 +236,7 @@ on('PUT', '/api/admin/styles/:id/wm', 'admin', async ({ env, req, params }) => {
   }
   const wm = {
     v: int(b.v, 1),
+    mark: str(b.mark, 80),
     name: str(b.name, 80),
     map,
   };

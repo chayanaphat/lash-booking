@@ -170,6 +170,6 @@ test('fb: posts use the watermarked copy when one exists', () => {
   const look = wmLookup([{ wm: parseWm('{"name":"YY","plain":["a"],"map":{"a":{"id":"a2","plain":1}}}') }, { wm: parseWm('oops') }]);
   assert.equal(look('a'), 'a2');
   assert.equal(look('b'), 'b');
-  assert.deepEqual(parseWm(''), { v: 1, name: '', map: {} });
-  assert.deepEqual(parseWm('{"v":3,"name":"YY","plain":["a"],"map":{"a":{"id":"a2","plain":1}}}'), { v: 3, name: 'YY', map: { a: { id: 'a2' } } });
+  assert.deepEqual(parseWm(''), { v: 1, mark: '', name: '', map: {} });
+  assert.deepEqual(parseWm('{"v":3,"name":"YY","plain":["a"],"map":{"a":{"id":"a2","plain":1}}}'), { v: 3, mark: '', name: 'YY', map: { a: { id: 'a2' } } });
 });

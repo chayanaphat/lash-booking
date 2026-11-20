@@ -1,7 +1,7 @@
 import {
   STATUS, addDays, api, baht, bkkToday, dayName, errText, esc, imgUrl, initLiff, loadImage, profile,
   promoRange, promoText, thaiDate, toast,
-} from './core.js?v=1795144360';
+} from './core.js?v=1795144734';
 
 const $app = document.getElementById('app');
 const TABS = [
@@ -229,7 +229,7 @@ const wmOf = (id) => {
   return id;
 };
 
-async function renderWm(origId, name) {
+async function renderWm(origId, name, mark) {
   const blob = await (await fetch(imgUrl(origId))).blob();
   const bmp = await createImageBitmap(blob);
   const w = bmp.width;
@@ -237,7 +237,7 @@ async function renderWm(origId, name) {
   const k = Math.min(w, h) / 540; // ออกแบบไว้ที่รูปกว้าง 540
   const nameFont = `500 ${Math.round(32 * k)}px "Playfair Display", Mitr, sans-serif`;
   const wmFont = `${Math.round(40 * k)}px "Great Vibes", cursive`;
-  await Promise.all([document.fonts.load(nameFont, name), document.fonts.load(wmFont, 'Kingyo eyelash')]);
+  await Promise.all([document.fonts.load(nameFont, name), document.fonts.load(wmFont, mark)]);
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
@@ -273,16 +273,19 @@ async function renderWm(origId, name) {
     x.shadowColor = 'rgba(0,0,0,.18)';
     x.shadowBlur = 6 * k;
     x.shadowOffsetY = 1 * k;
-    x.fillText('Kingyo eyelash', w - 18 * k, 10 * k);
+    x.fillText(mark, w - 18 * k, 10 * k, w * 0.6);
   }
   return c.toDataURL('image/jpeg', 0.88);
 }
 
 /** ทำรูปลายน้ำของทรงให้ตรงกับชื่อ/รูปปัจจุบัน (เรนเดอร์เฉพาะที่ยังไม่มีหรือเปลี่ยนไป) */
 async function syncWm(s) {
+  // ลายน้ำ = ชื่อร้านในหน้าตั้งค่า (ตัด emoji)
+  st.shopName ??= (await api('/api/admin/settings')).settings.shop_name;
+  const mark = wmName(st.shopName) || 'Kingyo Eyelash';
   const name = wmName(s.name);
-  const old = s.wm || { v: 1, name: '', map: {} };
-  const same = old.name === name && Number(old.v) === WM_V;
+  const old = s.wm || { v: 1, mark: '', name: '', map: {} };
+  const same = old.name === name && (old.mark || 'Kingyo eyelash') === mark && Number(old.v) === WM_V;
   const map = {};
   let changed = !same;
   for (const id of s.gallery || []) {
@@ -292,7 +295,7 @@ async function syncWm(s) {
       continue;
     }
     try {
-      const image = await renderWm(id, name);
+      const image = await renderWm(id, name, mark);
       map[id] = { id: (await api('/api/admin/images', { method: 'POST', body: { image } })).id };
       changed = true;
     } catch (e) {
@@ -301,7 +304,7 @@ async function syncWm(s) {
   }
   if (Object.keys(old.map || {}).some((k) => !map[k])) changed = true;
   if (!changed) return old;
-  const { wm } = await api(`/api/admin/styles/${s.id}/wm`, { method: 'PUT', body: { v: WM_V, name, map } });
+  const { wm } = await api(`/api/admin/styles/${s.id}/wm`, { method: 'PUT', body: { v: WM_V, mark, name, map } });
   s.wm = wm;
   return wm;
 }
@@ -334,7 +337,7 @@ function styleForm(s) {
     <label class="f">รูปผลงาน <span class="tiny muted">(สูงสุด ${MAX_IMG} รูป · แตะรูปเพื่อตั้งเป็นรูปหลักที่โชว์ในหน้าจอง)</span></label>
     <input type="file" accept="image/*" multiple id="file" class="hidden">
     <div class="gal" id="gal">${galHtml()}</div>
-    <div class="tiny muted mt">โพสต์เพจจะวนใช้ทุกรูปในนี้ โดยใส่ลายน้ำ "Kingyo eyelash" + ชื่อทรงให้อัตโนมัติ (รูปในหน้าจองไม่มีลายน้ำ)"</div>
+    <div class="tiny muted mt">โพสต์เพจจะวนใช้ทุกรูปในนี้ โดยใส่ลายน้ำชื่อร้าน + ชื่อทรงให้อัตโนมัติ (รูปในหน้าจองไม่มีลายน้ำ)"</div>
     <label class="f">ชื่อทรง / บริการ</label><input class="input" id="name" value="${esc(s.name)}" maxlength="80">
     <div class="grid2">
       <div><label class="f">หมวด (หัวข้อในหน้าจอง)</label><input class="input" id="cat" list="cats" value="${esc(s.category || '')}" maxlength="60">
@@ -777,7 +780,7 @@ async function settings() {
 
     <div class="card mt2">
       <b>Rich menu ของ LINE OA</b>
-      <img src="assets/richmenu.jpg?v=1795144360" style="border-radius:10px;margin-top:10px" alt="">
+      <img src="assets/richmenu.jpg?v=1795144734" style="border-radius:10px;margin-top:10px" alt="">
       <div class="tiny muted mt">กดเพื่อตั้งเมนู จองคิว / แต้มสะสม &amp; คิวของฉัน เป็นเมนูหลักของ OA (แทนเมนูเดิม)</div>
       <button class="btn ghost mt" id="richmenu">ติดตั้ง Rich menu</button>
     </div>
@@ -811,6 +814,10 @@ async function settings() {
       await api('/api/admin/settings', { method: 'PUT', body });
       st.me = await api('/api/me');
       toast('บันทึกแล้ว');
+      if (body.shop_name !== undefined && body.shop_name !== st.shopName) {
+        st.shopName = body.shop_name;
+        backfillWm(); // เปลี่ยนชื่อร้าน → ทำลายน้ำในรูปโพสต์ใหม่
+      }
     } catch (e) {
       toast(errText(e));
     }
@@ -819,7 +826,7 @@ async function settings() {
     if (!confirm('ตั้ง Rich menu นี้เป็นเมนูหลักของ LINE OA?')) return;
     e.target.disabled = true;
     try {
-      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795144360', location.href).href } });
+      await api('/api/admin/richmenu', { method: 'POST', body: { image_url: new URL('assets/richmenu.jpg?v=1795144734', location.href).href } });
       toast('ติดตั้ง Rich menu แล้ว ✅ เปิดแชท OA เพื่อดู');
     } catch (err) {
       toast(err.message === 'line_token_missing' ? 'ยังไม่ได้ใส่ LINE_CHANNEL_ACCESS_TOKEN ใน Cloudflare' : errText(err) + ' ' + (err.data?.detail || ''), 5000);
